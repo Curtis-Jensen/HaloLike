@@ -45,3 +45,6 @@ Thumbs.db
 
 # Claude Code local files
 .claude/
+
+# Review screenshots
+/Screenshots/

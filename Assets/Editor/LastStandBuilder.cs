@@ -4,19 +4,20 @@ using System.IO;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.Rendering.PostProcessing;
 using Object = UnityEngine.Object;
 
 // Authors the Last Stand project as real assets: weapon models, pickup and enemy prefabs (Assets/Resources), the Player prefab,
 // and the Asźod yard itself as plain GameObjects saved into Assets/Scenes/LastStand.unity.
 // Runs once automatically on first import; re-run from Tools > Last Stand > Build Scene (this REBUILDS the scene, discarding hand edits to it).
-public static class LastStandBuilder
+public static partial class LastStandBuilder
 {
     const string ScenePath = "Assets/Scenes/LastStand.unity";
     const string Gen = "Assets/Generated";
-    const int Version = 3;                       // bump to make Unity rebuild the scene automatically
+    const int Version = 6;                       // bump to make Unity rebuild the scene automatically
     const string VersionFile = "Assets/Generated/builder_version.txt";
     static readonly Dictionary<string, Material> matCache = new Dictionary<string, Material>();
-    static Texture2D panelTex, floorTex;
+    static Texture2D panelTex, floorTex, containerTex, dirtTex, skyTex;
 
     static readonly Color olive = new Color(0.24f, 0.3f, 0.2f), metal = new Color(0.17f, 0.18f, 0.2f), steel = new Color(0.55f, 0.57f, 0.6f),
                           black = new Color(0.05f, 0.05f, 0.06f), wood = new Color(0.36f, 0.22f, 0.12f), cyan = new Color(0.3f, 0.85f, 1f),
@@ -54,8 +55,11 @@ public static class LastStandBuilder
             AssetDatabase.Refresh();
             matCache.Clear();
 
-            panelTex = MakeTexture("Panel", new Color(0.8f, 0.8f, 0.85f), new Color(0.55f, 0.55f, 0.62f));
-            floorTex = MakeTexture("Floor", new Color(0.8f, 0.8f, 0.78f), new Color(0.45f, 0.45f, 0.45f));
+            panelTex = Tex("Plate", () => ProcTex.Plate(256), 8);
+            floorTex = Tex("Concrete", () => ProcTex.Concrete(256), 8);
+            containerTex = Tex("Corrugated", () => ProcTex.Corrugated(256), 8);
+            dirtTex = Tex("Dirt", () => ProcTex.Dirt(256), 8);
+            skyTex = Tex("SmokeSky", () => ProcTex.SmokeSky(2048, 1024, 0.5f, 7f), 1);
 
             foreach (var def in Weapons.All) BuildWeaponPrefab(def);
             BuildPickupPrefabs();
@@ -72,6 +76,20 @@ public static class LastStandBuilder
     }
 
     // ---------- Asset helpers ----------
+
+    // Generated texture asset (regenerated whenever the builder Version changes)
+    static Texture2D Tex(string name, System.Func<Texture2D> make, int aniso)
+    {
+        string path = Gen + "/Textures/" + name + "_v" + Version + ".png";
+        if (!File.Exists(path))
+        {
+            ProcTex.Save(make(), path);
+            var ti = (TextureImporter)AssetImporter.GetAtPath(path);
+            ti.anisoLevel = aniso; ti.wrapMode = name == "SmokeSky" ? TextureWrapMode.Repeat : TextureWrapMode.Repeat;
+            ti.maxTextureSize = 2048; ti.SaveAndReimport();
+        }
+        return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+    }
 
     static Texture2D MakeTexture(string name, Color tile, Color line)
     {
@@ -98,10 +116,10 @@ public static class LastStandBuilder
 
     static string F(float v) { return v.ToString("0.0", CultureInfo.InvariantCulture); }
 
-    static Material Mat(Color c, float glow = 0f, Texture2D tex = null, Vector2 tile = default(Vector2), float gloss = 0.25f, string shader = "Standard")
+    static Material Mat(Color c, float glow = 0f, Texture2D tex = null, Vector2 tile = default(Vector2), float gloss = 0.25f, string shader = "Standard", float metallic = 0f)
     {
         tile = new Vector2(Mathf.Round(tile.x * 2f) / 2f, Mathf.Round(tile.y * 2f) / 2f);
-        string key = shader.Replace('/', '_') + "_" + ColorUtility.ToHtmlStringRGBA(c) + "_g" + F(glow) + (tex ? "_" + tex.name + "_" + F(tile.x) + "x" + F(tile.y) : "");
+        string key = shader.Replace('/', '_') + "_" + ColorUtility.ToHtmlStringRGBA(c) + "_g" + F(glow) + "_s" + F(gloss) + "_m" + F(metallic) + (tex ? "_" + tex.name + "_" + F(tile.x) + "x" + F(tile.y) : "");
         Material m;
         if (matCache.TryGetValue(key, out m) && m) return m;
         string path = Gen + "/Materials/" + key + ".mat";
@@ -109,7 +127,7 @@ public static class LastStandBuilder
         if (!m)
         {
             m = new Material(Shader.Find(shader)) { color = c };
-            if (shader == "Standard") m.SetFloat("_Glossiness", gloss);
+            if (shader == "Standard") { m.SetFloat("_Glossiness", gloss); m.SetFloat("_Metallic", metallic); }
             if (tex) { m.mainTexture = tex; m.mainTextureScale = tile; }
             if (glow > 0f)
             {
@@ -134,10 +152,12 @@ public static class LastStandBuilder
         return go;
     }
 
+    static float gGloss = 0.25f, gMetal = 0f;   // surface finish used by G(); weapon models use a metallic finish
+
     // Shorthand with a plain color (and optional glow)
     static GameObject G(Transform parent, PrimitiveType t, string name, Vector3 pos, Vector3 scale, Color color, float glow = 0f, Vector3 euler = default(Vector3), bool collider = false)
     {
-        return Prim(t, parent, name, pos, scale, Mat(color, glow), collider, euler);
+        return Prim(t, parent, name, pos, scale, Mat(color, glow, null, default(Vector2), gGloss, "Standard", gMetal), collider, euler);
     }
 
     static GameObject SavePrefab(GameObject root, string path)
@@ -157,7 +177,12 @@ public static class LastStandBuilder
 
     // ---------- Weapon models (each weapon is visually distinct; same prefab is used in hand and on the ground) ----------
 
-    static void BuildWeaponPrefab(WeaponDef def) { SavePrefab(WeaponModel(def.id), "Assets/Resources/Weapons/" + def.id + ".prefab"); }
+    static void BuildWeaponPrefab(WeaponDef def)
+    {
+        gGloss = 0.55f; gMetal = 0.6f;
+        SavePrefab(WeaponModel(def.id), "Assets/Resources/Weapons/" + def.id + ".prefab");
+        gGloss = 0.25f; gMetal = 0f;
+    }
 
     static GameObject WeaponModel(string id)
     {
@@ -177,7 +202,12 @@ public static class LastStandBuilder
                 G(t, cube, "Mag", new Vector3(0, -0.13f, 0.3f), new Vector3(0.05f, 0.17f, 0.08f), metal, 0f, new Vector3(-12f, 0, 0));
                 G(t, cube, "Grip", new Vector3(0, -0.1f, 0.08f), new Vector3(0.04f, 0.12f, 0.05f), black, 0f, new Vector3(15f, 0, 0));
                 G(t, cube, "Stock", new Vector3(0, -0.01f, -0.12f), new Vector3(0.06f, 0.1f, 0.22f), olive);
-                mz = new Vector3(0, 0.01f, 0.96f); break;
+                G(t, cube, "TopRail", new Vector3(0, 0.07f, 0.3f), new Vector3(0.03f, 0.02f, 0.5f), metal);
+                G(t, cube, "FrontSight", new Vector3(0, 0.07f, 0.74f), new Vector3(0.015f, 0.05f, 0.015f), black);
+                G(t, cube, "TriggerGuard", new Vector3(0, -0.06f, 0.17f), new Vector3(0.015f, 0.035f, 0.1f), black);
+                G(t, cube, "AmmoCounter", new Vector3(0.041f, 0.02f, 0.14f), new Vector3(0.005f, 0.03f, 0.07f), cyan, 2f);
+                G(t, cyl, "MuzzleBrake", new Vector3(0, 0.01f, 0.97f), new Vector3(0.032f, 0.03f, 0.032f), metal, 0f, along);
+                mz = new Vector3(0, 0.01f, 1.0f); break;
             case "dmr":
                 G(t, cube, "Body", new Vector3(0, 0, 0.3f), new Vector3(0.06f, 0.1f, 0.62f), olive);
                 G(t, cube, "Handguard", new Vector3(0, 0, 0.75f), new Vector3(0.05f, 0.08f, 0.3f), metal);
@@ -201,6 +231,9 @@ public static class LastStandBuilder
                 G(t, cyl, "MagTube", new Vector3(0, -0.025f, 0.55f), new Vector3(0.026f, 0.25f, 0.026f), steel, 0f, along);
                 G(t, cube, "Pump", new Vector3(0, -0.045f, 0.5f), new Vector3(0.065f, 0.06f, 0.2f), wood);
                 G(t, cube, "Stock", new Vector3(0, -0.05f, -0.18f), new Vector3(0.06f, 0.12f, 0.38f), wood, 0f, new Vector3(-8f, 0, 0));
+                G(t, cube, "Grip", new Vector3(0, -0.09f, 0.04f), new Vector3(0.04f, 0.12f, 0.05f), black, 0f, new Vector3(12f, 0, 0));
+                G(t, cube, "Sight", new Vector3(0, 0.055f, 0.9f), new Vector3(0.012f, 0.03f, 0.012f), cyan, 2f);
+                G(t, cyl, "BarrelBand", new Vector3(0, 0.025f, 0.75f), new Vector3(0.036f, 0.015f, 0.036f), steel, 0f, along);
                 mz = new Vector3(0, 0.025f, 0.92f); break;
             case "sniper":
                 var bluegray = new Color(0.22f, 0.27f, 0.32f);
@@ -273,7 +306,9 @@ public static class LastStandBuilder
         {
             var root = new GameObject("Pickup_" + def.id);
             var pk = root.AddComponent<Pickup>(); pk.kind = Pickup.Kind.Weapon; pk.weaponId = def.id;
+            gGloss = 0.55f; gMetal = 0.6f;
             var model = WeaponModel(def.id);
+            gGloss = 0.25f; gMetal = 0f;
             model.name = "Model"; model.transform.SetParent(root.transform, false);
             model.transform.localScale = Vector3.one * 1.15f; model.transform.localPosition = new Vector3(0, 0, -0.45f);
             G(root.transform, PrimitiveType.Cylinder, "Marker", new Vector3(0, -0.35f, 0), new Vector3(0.55f, 0.01f, 0.55f), cyan, 2f);
@@ -301,11 +336,11 @@ public static class LastStandBuilder
 
     static void BuildEnemyPrefabs()
     {
-        BuildEnemy(Enemy.Kind.Grunt, 0.4f, 1.8f, 1f, BuildGrunt);
-        BuildEnemy(Enemy.Kind.Elite, 0.5f, 2.4f, 1f, t => BuildElite(t, new Color(0.2f, 0.35f, 0.8f), false, false, false));
-        BuildEnemy(Enemy.Kind.Ranger, 0.5f, 2.4f, 1f, t => BuildElite(t, new Color(0.2f, 0.55f, 0.3f), false, true, false));
-        BuildEnemy(Enemy.Kind.General, 0.5f, 2.4f, 1.1f, t => BuildElite(t, new Color(0.7f, 0.55f, 0.15f), true, false, false));
-        BuildEnemy(Enemy.Kind.Zealot, 0.5f, 2.4f, 1.1f, t => BuildElite(t, new Color(0.9f, 0.9f, 0.8f), true, false, true));
+        BuildEnemy(Enemy.Kind.Grunt, 0.42f, 1.85f, 1f, BuildGrunt);
+        BuildEnemy(Enemy.Kind.Elite, 0.5f, 2.9f, 1f, t => BuildElite(t, new Color(0.2f, 0.35f, 0.8f), false, false, false));
+        BuildEnemy(Enemy.Kind.Ranger, 0.5f, 2.9f, 1f, t => BuildElite(t, new Color(0.2f, 0.55f, 0.3f), false, true, false));
+        BuildEnemy(Enemy.Kind.General, 0.5f, 2.9f, 1.1f, t => BuildElite(t, new Color(0.7f, 0.55f, 0.15f), true, false, false));
+        BuildEnemy(Enemy.Kind.Zealot, 0.5f, 2.9f, 1.1f, t => BuildElite(t, new Color(0.9f, 0.9f, 0.8f), true, false, true));
         BuildEnemy(Enemy.Kind.Wraith, 1.8f, 3.6f, 1f, BuildWraith);
         BuildEnemy(Enemy.Kind.Banshee, 0f, 0f, 1f, BuildBanshee);
     }
@@ -323,40 +358,6 @@ public static class LastStandBuilder
         build(root.transform);
         root.transform.localScale = Vector3.one * scale;
         SavePrefab(root, "Assets/Resources/Enemies/" + kind + ".prefab");
-    }
-
-    // Unggoy: short, with a methane tank and glowing eyes
-    static void BuildGrunt(Transform t)
-    {
-        G(t, PrimitiveType.Capsule, "Body", new Vector3(0, 0.9f, 0), Vector3.one * 0.9f, new Color(0.45f, 0.3f, 0.7f));
-        G(t, PrimitiveType.Sphere, "Head", new Vector3(0, 1.9f, 0.1f), Vector3.one * 0.55f, new Color(0.9f, 0.5f, 0.2f));
-        G(t, PrimitiveType.Cylinder, "Tank", new Vector3(0, 1.3f, -0.45f), new Vector3(0.28f, 0.4f, 0.28f), new Color(0.2f, 0.5f, 0.5f));
-        G(t, PrimitiveType.Sphere, "EyeL", new Vector3(-0.13f, 1.95f, 0.33f), Vector3.one * 0.1f, new Color(1f, 0.8f, 0.2f), 3f);
-        G(t, PrimitiveType.Sphere, "EyeR", new Vector3(0.13f, 1.95f, 0.33f), Vector3.one * 0.1f, new Color(1f, 0.8f, 0.2f), 3f);
-        G(t, PrimitiveType.Cube, "Weapon", new Vector3(0.4f, 1.0f, 0.4f), new Vector3(0.1f, 0.12f, 0.45f), dark);
-        G(t, PrimitiveType.Sphere, "WeaponGlow", new Vector3(0.4f, 1.0f, 0.65f), Vector3.one * 0.12f, new Color(0.3f, 1f, 0.4f), 3f);
-    }
-
-    // Sangheili: tall, shielded warriors; extras identify the variant
-    static void BuildElite(Transform t, Color body, bool crest, bool jetpack, bool sword)
-    {
-        G(t, PrimitiveType.Capsule, "Body", new Vector3(0, 1.15f, 0), new Vector3(0.95f, 1.15f, 0.95f), body);
-        G(t, PrimitiveType.Sphere, "Head", new Vector3(0, 2.45f, 0.1f), new Vector3(0.5f, 0.55f, 0.7f), dark);
-        G(t, PrimitiveType.Sphere, "Visor", new Vector3(0, 2.4f, 0.4f), new Vector3(0.3f, 0.1f, 0.1f), plasmaBlue, 3f);
-        G(t, PrimitiveType.Cube, "ShoulderL", new Vector3(-0.55f, 1.95f, 0f), new Vector3(0.35f, 0.25f, 0.4f), body * 0.8f);
-        G(t, PrimitiveType.Cube, "ShoulderR", new Vector3(0.55f, 1.95f, 0f), new Vector3(0.35f, 0.25f, 0.4f), body * 0.8f);
-        if (!sword)
-        {
-            G(t, PrimitiveType.Cube, "Rifle", new Vector3(0.45f, 1.3f, 0.4f), new Vector3(0.1f, 0.12f, 0.6f), dark);
-            G(t, PrimitiveType.Sphere, "RifleGlow", new Vector3(0.45f, 1.3f, 0.75f), Vector3.one * 0.1f, plasmaBlue, 3f);
-        }
-        else G(t, PrimitiveType.Cube, "EnergySword", new Vector3(0.55f, 1.4f, 0.95f), new Vector3(0.1f, 0.12f, 1.4f), plasmaBlue, 3.5f);
-        if (crest) G(t, PrimitiveType.Cube, "Crest", new Vector3(0, 2.85f, 0f), new Vector3(0.12f, 0.3f, 0.55f), gold, 1.5f);
-        if (jetpack)
-        {
-            G(t, PrimitiveType.Cube, "Jetpack", new Vector3(0, 1.7f, -0.55f), new Vector3(0.55f, 0.7f, 0.3f), dark);
-            G(t, PrimitiveType.Sphere, "Thruster", new Vector3(0, 1.3f, -0.6f), Vector3.one * 0.25f, new Color(1f, 0.6f, 0.2f), 3f);
-        }
     }
 
     static void BuildWraith(Transform t)
@@ -391,8 +392,20 @@ public static class LastStandBuilder
         cam.transform.SetParent(root.transform, false); cam.transform.localPosition = new Vector3(0, 1.7f, 0);
         var c = cam.AddComponent<Camera>(); c.fieldOfView = 80f; c.nearClipPlane = 0.05f; c.farClipPlane = 400f;
         cam.AddComponent<AudioListener>();
+        AttachPostFx(c);
         var gun = new GameObject("Gun");                           // weapon models are parented here at runtime
-        gun.transform.SetParent(cam.transform, false); gun.transform.localPosition = new Vector3(0.3f, -0.28f, 0.55f);
+        gun.transform.SetParent(cam.transform, false); gun.transform.localPosition = new Vector3(0.26f, -0.27f, 0.52f);
+
+        // First-person forearms: armored sleeves and gloves holding the weapon
+        var sleeve = Mat(new Color(0.2f, 0.26f, 0.18f), 0f, null, default(Vector2), 0.5f, "Standard", 0.4f);
+        var glove = Mat(new Color(0.07f, 0.07f, 0.08f), 0f, null, default(Vector2), 0.3f, "Standard", 0.1f);
+        Limb(gun.transform, PrimitiveType.Capsule, "ForearmR", new Vector3(0.17f, -0.36f, -0.42f), new Vector3(0.025f, -0.075f, -0.01f), 0.06f, sleeve);
+        Prim(PrimitiveType.Sphere, gun.transform, "HandR", new Vector3(0.0f, -0.055f, 0.02f), new Vector3(0.06f, 0.055f, 0.085f), glove);
+        Limb(gun.transform, PrimitiveType.Capsule, "ForearmL", new Vector3(-0.36f, -0.37f, -0.12f), new Vector3(-0.03f, -0.075f, 0.34f), 0.055f, sleeve);
+        Prim(PrimitiveType.Sphere, gun.transform, "HandL", new Vector3(-0.025f, -0.055f, 0.355f), new Vector3(0.06f, 0.055f, 0.085f), glove);
+        Prim(PrimitiveType.Cube, gun.transform, "BracerL", new Vector3(-0.2f, -0.2f, 0.1f), new Vector3(0.07f, 0.05f, 0.14f), sleeve, false, new Vector3(0, 20f, 16f));
+
+        Ash(cam.transform);
         return SavePrefab(root, "Assets/Prefabs/Player.prefab");
     }
 
@@ -419,31 +432,81 @@ public static class LastStandBuilder
         EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(ScenePath, true) };
     }
 
-    // 20:00 hours on Reach: low sun, smoky dusk sky, fires on the horizon
+    // 20:00 hours on Reach: a low hazy sun behind smoke, orange horizon, thick dust in the air
     static void BuildLighting()
     {
         var sun = new GameObject("Sun").AddComponent<Light>();
-        sun.type = LightType.Directional; sun.intensity = 0.9f; sun.color = new Color(1f, 0.6f, 0.35f);
-        sun.shadows = LightShadows.Soft;
-        sun.transform.rotation = Quaternion.Euler(14f, -40f, 0f);
+        sun.type = LightType.Directional; sun.intensity = 1.25f; sun.color = new Color(1f, 0.68f, 0.42f);
+        sun.shadows = LightShadows.Soft; sun.shadowStrength = 0.85f;
+        sun.transform.rotation = Quaternion.Euler(SunElevation, SunYaw, 0f);
         RenderSettings.sun = sun;
 
-        string skyPath = Gen + "/Materials/DuskSky.mat";
-        var sky = AssetDatabase.LoadAssetAtPath<Material>(skyPath);
-        if (!sky)
-        {
-            sky = new Material(Shader.Find("Skybox/Procedural"));
-            sky.SetColor("_SkyTint", new Color(0.5f, 0.35f, 0.4f)); sky.SetColor("_GroundColor", new Color(0.2f, 0.15f, 0.17f));
-            sky.SetFloat("_AtmosphereThickness", 1.8f); sky.SetFloat("_Exposure", 0.8f); sky.SetFloat("_SunSize", 0.05f);
-            AssetDatabase.CreateAsset(sky, skyPath);
-        }
+        // Soft fill from behind the player (no shadows) so faces toward the camera stay readable in the haze
+        var fill = new GameObject("FillLight").AddComponent<Light>();
+        fill.type = LightType.Directional; fill.intensity = 0.65f; fill.color = new Color(0.95f, 0.72f, 0.58f); fill.shadows = LightShadows.None;
+        fill.transform.rotation = Quaternion.Euler(38f, 20f, 0f);
+
+        string skyPath = Gen + "/Materials/SmokeSky.mat";
+        AssetDatabase.DeleteAsset(skyPath);
+        var sky = new Material(Shader.Find("Skybox/Panoramic"));
+        sky.SetTexture("_MainTex", skyTex); sky.SetFloat("_Mapping", 1f); sky.SetFloat("_ImageType", 0f); sky.SetFloat("_Exposure", 1.05f); sky.SetFloat("_Rotation", 65f);   // glow centered ~25 degrees right of the start view
+        AssetDatabase.CreateAsset(sky, skyPath);
         RenderSettings.skybox = sky;
         RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Trilight;
-        RenderSettings.ambientSkyColor = new Color(0.38f, 0.3f, 0.42f);
-        RenderSettings.ambientEquatorColor = new Color(0.3f, 0.24f, 0.3f);
-        RenderSettings.ambientGroundColor = new Color(0.12f, 0.1f, 0.12f);
+        RenderSettings.ambientSkyColor = new Color(0.66f, 0.50f, 0.42f);
+        RenderSettings.ambientEquatorColor = new Color(0.55f, 0.40f, 0.33f);
+        RenderSettings.ambientGroundColor = new Color(0.26f, 0.19f, 0.15f);
         RenderSettings.fog = true; RenderSettings.fogMode = FogMode.ExponentialSquared;
-        RenderSettings.fogDensity = 0.012f; RenderSettings.fogColor = new Color(0.42f, 0.3f, 0.34f);
+        RenderSettings.fogDensity = 0.0165f; RenderSettings.fogColor = new Color(0.56f, 0.39f, 0.29f);
+        RenderSettings.reflectionIntensity = 0.5f;
+
+        // Post-processing: bloom, filmic tonemapping with a warm grade, vignette, ambient obscurance, grain
+        var profile = BuildPostProfile();
+        var fx = new GameObject("PostFX");
+        var vol = fx.AddComponent<PostProcessVolume>();
+        vol.isGlobal = true; vol.priority = 1f; vol.sharedProfile = profile;
+    }
+
+    public const float SunYaw = 205f, SunElevation = 7f;   // the sun glows ahead and to the right of the start view; its light travels toward the player
+
+    static PostProcessProfile BuildPostProfile()
+    {
+        string path = Gen + "/PostFX.asset";
+        AssetDatabase.DeleteAsset(path);
+        var profile = ScriptableObject.CreateInstance<PostProcessProfile>();
+        AssetDatabase.CreateAsset(profile, path);
+        T Add<T>() where T : PostProcessEffectSettings
+        {
+            var s = profile.AddSettings<T>();
+            s.enabled.Override(true);
+            AssetDatabase.AddObjectToAsset(s, profile);
+            return s;
+        }
+        var bloom = Add<Bloom>();
+        bloom.intensity.Override(0.7f); bloom.threshold.Override(0.85f); bloom.softKnee.Override(0.6f); bloom.diffusion.Override(7f);
+        bloom.color.Override(new Color(1f, 0.82f, 0.65f));
+        var cg = Add<ColorGrading>();
+        cg.gradingMode.Override(GradingMode.HighDefinitionRange); cg.tonemapper.Override(Tonemapper.ACES);
+        cg.postExposure.Override(0.8f); cg.temperature.Override(14f); cg.saturation.Override(-14f); cg.contrast.Override(16f);
+        var vig = Add<Vignette>();
+        vig.intensity.Override(0.34f); vig.smoothness.Override(0.55f); vig.roundness.Override(0.9f);
+        var grain = Add<Grain>();
+        grain.intensity.Override(0.18f); grain.size.Override(1.0f);
+        EditorUtility.SetDirty(profile);
+        AssetDatabase.SaveAssets();
+        return profile;
+    }
+
+    // Adds the post-processing layer to a camera (used on the Player prefab and by the screenshot tool)
+    public static void AttachPostFx(Camera cam)
+    {
+        cam.allowHDR = true;
+        var layer = cam.gameObject.GetComponent<PostProcessLayer>() ?? cam.gameObject.AddComponent<PostProcessLayer>();
+        PostProcessResources res = null;
+        foreach (var guid in AssetDatabase.FindAssets("t:PostProcessResources")) res = AssetDatabase.LoadAssetAtPath<PostProcessResources>(AssetDatabase.GUIDToAssetPath(guid));
+        if (res) layer.Init(res);
+        layer.volumeTrigger = cam.transform; layer.volumeLayer = ~0;
+        layer.antialiasingMode = PostProcessLayer.Antialiasing.FastApproximateAntialiasing;
     }
 
     static Transform Group(Transform parent, string name)
@@ -453,9 +516,15 @@ public static class LastStandBuilder
 
     static GameObject Box(Transform parent, string name, Vector3 pos, Vector3 scale, Color color, Vector3 euler = default(Vector3))
     {
-        bool floor = name == "Floor";
-        var tile = floor ? new Vector2(scale.x / 4f, scale.z / 4f) : new Vector2(Mathf.Max(1f, Mathf.Max(scale.x, scale.z) / 4f), Mathf.Max(1f, scale.y / 4f));
-        var go = Prim(PrimitiveType.Cube, parent, name, pos, scale, Mat(color, 0f, floor ? floorTex : panelTex, tile, 0.25f), true, euler);
+        Texture2D tex = panelTex; Vector2 tile; float gloss = 0.2f, metallic = 0f;
+        bool metal = name.Contains("Container") || name.StartsWith("Hangar");
+        if (name == "Floor") { tex = floorTex; tile = new Vector2(scale.x / 5f, scale.z / 5f); gloss = 0.05f; }
+        else if (metal) { tex = containerTex; tile = new Vector2(Mathf.Max(1f, Mathf.Max(scale.x, scale.z) / 3f), Mathf.Max(1f, scale.y / 3f)); gloss = 0.3f; metallic = 0.35f; }
+        else if (name.StartsWith("Wall") || name.StartsWith("Room") || name.StartsWith("Roof") || name.StartsWith("Parapet") || name.StartsWith("Wreck") || name.StartsWith("Crane"))
+        { tex = panelTex; tile = new Vector2(Mathf.Max(1f, Mathf.Max(scale.x, scale.z) / 4f), Mathf.Max(1f, scale.y / 4f)); gloss = 0.15f; metallic = 0.2f; }
+        else if (scale.y <= 1.3f) { tex = panelTex; tile = new Vector2(Mathf.Max(1f, scale.x / 3f), Mathf.Max(1f, scale.z / 3f)); gloss = 0.2f; metallic = 0.3f; }   // decks and slabs are seen from above
+        else { tex = floorTex; tile = new Vector2(Mathf.Max(1f, Mathf.Max(scale.x, scale.z) / 4f), Mathf.Max(1f, scale.y / 4f)); gloss = 0.05f; }
+        var go = Prim(PrimitiveType.Cube, parent, name, pos, scale, Mat(color, 0f, tex, tile, gloss, "Standard", metallic), true, euler);
         GameObjectUtility.SetStaticEditorFlags(go, StaticEditorFlags.BatchingStatic);
         return go;
     }
@@ -476,10 +545,23 @@ public static class LastStandBuilder
     static void BuildLevel(Transform level)
     {
         var rng = new System.Random(11);
-        var concrete = new Color(0.5f, 0.5f, 0.48f);
+        var concrete = new Color(0.78f, 0.74f, 0.68f);
         var wall = new Color(0.6f, 0.58f, 0.55f);
 
         Box(level, "Floor", new Vector3(0, -0.5f, 0), new Vector3(135, 1, 135), concrete);
+
+        // Dirt terrain and rocky hills fading into the haze beyond the container wall
+        var land = Group(level, "Landscape");
+        var dirt = new Color(0.95f, 0.78f, 0.62f);
+        Prim(PrimitiveType.Cube, land, "Terrain", new Vector3(0, -1.05f, 0), new Vector3(1400, 2f, 1400), Mat(dirt, 0f, dirtTex, new Vector2(300f, 300f), 0.02f), false);
+        var hillRng = new System.Random(77);
+        for (int i = 0; i < 26; i++)
+        {
+            float a = (float)(hillRng.NextDouble() * Mathf.PI * 2f), dist = 110f + (float)hillRng.NextDouble() * 220f;
+            float wide = 50f + (float)hillRng.NextDouble() * 110f, tall = 12f + (float)hillRng.NextDouble() * 38f;
+            Prim(PrimitiveType.Sphere, land, "Hill" + i, new Vector3(Mathf.Cos(a) * dist, tall * 0.15f - 4f, Mathf.Sin(a) * dist), new Vector3(wide, tall, wide * 0.9f),
+                 Mat(dirt * (0.7f + 0.3f * (float)hillRng.NextDouble()), 0f, dirtTex, new Vector2(wide / 8f, tall / 8f), 0.02f), false);
+        }
 
         // Perimeter: a triple-stacked wall of shipping containers (the yard has no way out)
         var perimeter = Group(level, "Perimeter");
@@ -528,7 +610,9 @@ public static class LastStandBuilder
         {
             float x = (float)(rng.NextDouble() * 96 - 48), z = (float)(rng.NextDouble() * 96 - 48);
             if (x > -20f && x < 34f && z > -6f && z < 26f) continue;          // warehouse + stairs
-            if (new Vector2(x, z + 16f).magnitude < 9f) continue;             // player start
+            if (Mathf.Abs(x) < 14f && z > -27f && z < -6f) continue;           // start platform
+            if (Mathf.Abs(x + 47f) < 18f && Mathf.Abs(z - 2f) < 17f) continue;  // west hangar
+            if (Mathf.Abs(x - 47f) < 16f && Mathf.Abs(z - 33f) < 19f) continue; // east hangar
             bool rot = rng.NextDouble() < 0.5;
             var size = rot ? new Vector3(2.6f, 3f, 12.4f) : new Vector3(12.4f, 3f, 2.6f);
             Box(yard, "Container" + i, new Vector3(x, 1.5f, z), size, containerColors[rng.Next(containerColors.Length)]);
@@ -559,10 +643,15 @@ public static class LastStandBuilder
             float a = i * Mathf.PI * 2f / 9f + 0.3f; float r = 28f + (i % 3) * 9f;
             var fire = new GameObject("Fire" + i); fire.transform.SetParent(fires, false);
             fire.transform.position = new Vector3(Mathf.Cos(a) * r, 0f, Mathf.Sin(a) * r);
-            Prim(PrimitiveType.Cube, fire.transform, "Flame", Vector3.up * 0.5f, new Vector3(0.8f, 1f, 0.8f), Mat(new Color(1f, 0.5f, 0.1f), 2.5f), false);
+            var flame = Mat(new Color(1f, 0.45f, 0.08f), 1.4f);
+            Prim(PrimitiveType.Sphere, fire.transform, "Flame", Vector3.up * 0.35f, new Vector3(0.9f, 0.55f, 0.9f), flame, false);
+            Prim(PrimitiveType.Sphere, fire.transform, "FlameMid", Vector3.up * 0.75f, new Vector3(0.6f, 0.7f, 0.6f), flame, false);
+            Prim(PrimitiveType.Sphere, fire.transform, "FlameTip", Vector3.up * 1.15f, new Vector3(0.3f, 0.55f, 0.3f), Mat(new Color(1f, 0.75f, 0.2f), 1.8f), false);
             AddLight(fire.transform, Vector3.up * 2f, new Color(1f, 0.5f, 0.15f), 16f, 1.6f);
             fire.AddComponent<Flicker>();
         }
+
+        BuildDressing(level, rng);
 
         // Supplies: the yard has a few weapons lying about, more up on the roof
         var pickups = Group(level, "Pickups");

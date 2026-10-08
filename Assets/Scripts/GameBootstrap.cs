@@ -28,6 +28,8 @@ public partial class GameBootstrap : MonoBehaviour
     {
         inst = this;
         FinalStand = false;
+        // Lots of small colored lights and soft shadows: make sure the quality tier doesn't throw them away
+        QualitySettings.pixelLightCount = 8; QualitySettings.shadowDistance = 80f; QualitySettings.shadowCascades = 2;
         white = Texture2D.whiteTexture;
         circleTex = MakeCircle(128);
 
