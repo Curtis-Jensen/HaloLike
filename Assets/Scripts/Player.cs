@@ -37,6 +37,13 @@ public class Player : MonoBehaviour
     public bool IsZoomed { get; private set; }
     public bool IsCrouched { get; private set; }
     public bool HasDropShield { get; private set; }
+    public string WeaponId { get { return Cur.def.id; } }
+    public float GunKick { get { return gunKick; } }
+    public float SprintAmount { get { return sprintBlend; } }
+    public float BobPhase { get; private set; }
+    public float BobAmount { get; private set; }
+    public float ReloadFraction { get { return IsReloading ? Mathf.Clamp01(1f - (reloadEnd - Time.time) / Mathf.Max(0.01f, reloadDuration)) : 0f; } }
+    public bool MuzzleFlashing { get { return Time.time < flashUntil; } }
     public Vector3 EyePos { get { return cam.transform.position; } }
     public float HitFlash { get; private set; }
     public float HitMarker { get; private set; }
@@ -59,6 +66,7 @@ public class Player : MonoBehaviour
     Vector3 impulse;
     float pitch, yVel, nextShot, nextMelee, lastDamageTime, reloadEnd, gunKick, sprintBlend;
     bool rechargeSfx;
+    float flashUntil, reloadDuration = 1f;
 
     static Slot NewSlot(WeaponDef d) { return new Slot { def = d, ammo = d.mag, reserve = d.reserve }; }
 
@@ -82,21 +90,10 @@ public class Player : MonoBehaviour
         Cursor.visible = false;
     }
 
-    // Each weapon has its own model prefab (Resources/Weapons); the same prefab is used for pickups on the ground
+    // The first-person weapon and arms are a baked 2D sprite drawn by the HUD (see GameBootstrap.Hud.cs); only the muzzle light lives in 3D.
     void ShowModel()
     {
-        if (!gun) return;
-        if (gunModel) Destroy(gunModel.gameObject);
-        var prefab = Resources.Load<GameObject>("Weapons/" + Cur.def.id);
-        if (prefab)
-        {
-            gunModel = Instantiate(prefab, gun).transform;
-            gunModel.localPosition = Vector3.zero; gunModel.localRotation = Quaternion.identity;
-            foreach (var l in gunModel.GetComponentsInChildren<Light>()) l.enabled = false;
-            muzzlePoint = gunModel.Find("Muzzle");
-        }
-        else muzzlePoint = null;
-        if (muzzle) { muzzle.transform.SetParent(muzzlePoint ? muzzlePoint : gun, false); muzzle.transform.localPosition = Vector3.zero; }
+        if (muzzle && gun) { muzzle.transform.SetParent(gun, false); muzzle.transform.localPosition = new Vector3(0f, 0f, 0.7f); }
     }
 
     void Update()
@@ -115,7 +112,11 @@ public class Player : MonoBehaviour
         IsZoomed = !IsSprinting && !IsReloading && Cur.def.zoom > 1f && Input.GetMouseButton(1);
         float fovTarget = IsZoomed ? baseFov / Cur.def.zoom : baseFov + (IsSprinting ? 7f : 0f);
         cam.fieldOfView = Mathf.Lerp(cam.fieldOfView, fovTarget, Time.deltaTime * 10f);
-        if (gun) gun.gameObject.SetActive(!(IsZoomed && Cur.def.zoom >= 4f));
+
+        // Weapon sprite bob: grows with ground speed
+        float groundSpeed = new Vector2(cc.velocity.x, cc.velocity.z).magnitude;
+        BobAmount = Mathf.MoveTowards(BobAmount, cc.isGrounded ? Mathf.Clamp01(groundSpeed / walkSpeed) : 0f, Time.deltaTime * 6f);
+        BobPhase += Time.deltaTime * (IsSprinting ? 12f : 8f) * BobAmount;
 
         // Gun recoil recovery
         gunKick = Mathf.Lerp(gunKick, 0f, Time.deltaTime * 15f);
@@ -213,7 +214,7 @@ public class Player : MonoBehaviour
         Sfx.Play2D("swap");
     }
 
-    void StartReload(WeaponDef d) { Sfx.Play2D("reload"); IsReloading = true; reloadEnd = Time.time + d.reload; }
+    void StartReload(WeaponDef d) { Sfx.Play2D("reload"); IsReloading = true; reloadDuration = d.reload; reloadEnd = Time.time + d.reload; }
 
     void FinishReload(Slot s)
     {
@@ -228,6 +229,7 @@ public class Player : MonoBehaviour
         s.ammo--;
         nextShot = Time.time + d.interval;
         gunKick = d.kick;
+        flashUntil = Time.time + 0.06f;
         if (muzzle) muzzle.intensity = d.pellets > 1 ? 6f : 3f;
         Sfx.Play2D(d.sfx, 0.7f);
         if (d.projectile)
@@ -258,7 +260,7 @@ public class Player : MonoBehaviour
             if (enemy) { enemy.TakeDamage(dmg); HitMarker = 1f; }
             else GameBootstrap.SpawnSpark(hit.point, hit.normal);
         }
-        GameBootstrap.SpawnTracer(muzzlePoint && gun.gameObject.activeSelf ? muzzlePoint.position : cam.transform.position + cam.transform.right * 0.2f - cam.transform.up * 0.1f, end, tracer);
+        GameBootstrap.SpawnTracer(cam.transform.position + cam.transform.forward * 0.5f + cam.transform.right * 0.2f - cam.transform.up * 0.12f, end, tracer);
     }
 
     // Energy sword: a wide, lethal swing with a short lunge toward the target

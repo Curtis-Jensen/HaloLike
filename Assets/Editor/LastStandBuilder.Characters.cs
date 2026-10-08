@@ -89,7 +89,7 @@ public static partial class LastStandBuilder
         else
         {
             Prim(PrimitiveType.Cube, t, "SwordHilt", new Vector3(0.32f, 1.64f, 0.72f), new Vector3(0.09f, 0.09f, 0.28f), dark);
-            Prim(PrimitiveType.Cube, t, "EnergySword", new Vector3(0.32f, 1.64f, 1.46f), new Vector3(0.05f, 0.2f, 1.25f), Mat(new Color(0.4f, 0.85f, 1f), 3.5f));
+            Prim(PrimitiveType.Cube, t, "EnergySword", new Vector3(0.32f, 1.64f, 1.46f), new Vector3(0.05f, 0.2f, 1.25f), Mat(new Color(0.25f, 0.65f, 1f), 1.5f));
         }
         if (crest) Prim(PrimitiveType.Cube, t, "Crest", new Vector3(0, 2.8f, -0.05f), new Vector3(0.08f, 0.12f, 0.5f), ArmorT(bodyColor * 0.5f), false, new Vector3(-8f, 0, 0));   // low ridge, not a plume
         if (jetpack)

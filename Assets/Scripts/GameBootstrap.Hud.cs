@@ -34,6 +34,7 @@ public partial class GameBootstrap
         if (p.HitFlash > 0f) { GUI.color = new Color(1f, 0f, 0f, p.HitFlash * 0.25f); GUI.DrawTexture(new Rect(0, 0, w, h), white); }
 
         bool scoped = p.IsZoomed && p.Zoom >= 4f;
+        if (!p.IsZoomed) DrawWeaponSprite(p, w, h);
         if (scoped) DrawScope(w, h);
         else
         {
@@ -101,6 +102,47 @@ public partial class GameBootstrap
 
         if (Time.time < bannerUntil) Shadow(new Rect(0, h * 0.2f, w, 70), banner, big);
         GUI.color = Color.white;
+    }
+
+    // Doom-style first-person weapon: a baked 2D sprite (arms + gun) with walking bob, recoil, sprint and reload dips, and a muzzle flash
+    Texture2D flashTex;
+    void DrawWeaponSprite(Player p, float w, float h)
+    {
+        var tex = SpriteData.Tex("w_" + p.WeaponId);
+        if (!tex) return;
+        float scale = Mathf.Max(w / 1280f, h / 720f);
+        float sw = 1280f * scale, sh = 720f * scale;
+        float bob = p.BobAmount;
+        float dx = Mathf.Sin(p.BobPhase) * 10f * bob * scale + p.SprintAmount * 60f * scale;
+        float dy = Mathf.Abs(Mathf.Cos(p.BobPhase)) * 14f * bob * scale + p.GunKick * 700f * scale + p.SprintAmount * 150f * scale
+                   + Mathf.Sin(Mathf.PI * p.ReloadFraction) * 0.55f * sh * 0.5f;
+        var rect = new Rect((w - sw) * 0.5f + dx, h - sh + dy, sw, sh);
+        GUI.color = Color.white;
+        GUI.DrawTexture(rect, tex, ScaleMode.StretchToFill, true);
+        var md = SpriteData.Get("w_" + p.WeaponId);
+        if (p.MuzzleFlashing && md != null && md.Length >= 2)
+        {
+            if (!flashTex) flashTex = MakeFlash(64);
+            float fs = (p.WeaponId == "shotgun" ? 220f : 130f) * scale;
+            GUI.color = new Color(1f, 0.85f, 0.5f, 0.95f);
+            GUI.DrawTexture(new Rect(rect.x + md[0] * sw - fs * 0.5f, rect.y + (1f - md[1]) * sh - fs * 0.5f, fs, fs), flashTex);
+            GUI.color = Color.white;
+        }
+    }
+
+    static Texture2D MakeFlash(int size)
+    {
+        var tex = new Texture2D(size, size, TextureFormat.RGBA32, false) { filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp };
+        float c = (size - 1) * 0.5f;
+        for (int y = 0; y < size; y++)
+            for (int x = 0; x < size; x++)
+            {
+                float dx = (x - c) / c, dy = (y - c) / c, d = Mathf.Sqrt(dx * dx + dy * dy);
+                float star = Mathf.Max(0f, 1f - d * 1.1f) + Mathf.Max(0f, 1f - Mathf.Abs(dx) * 5f - Mathf.Abs(dy) * 0.6f) * 0.9f + Mathf.Max(0f, 1f - Mathf.Abs(dy) * 5f - Mathf.Abs(dx) * 0.6f) * 0.9f;
+                tex.SetPixel(x, y, new Color(1f, 1f, 1f, Mathf.Clamp01(star) > 0.35f ? 1f : 0f));
+            }
+        tex.Apply();
+        return tex;
     }
 
     // Motion tracker: enemies relative to where you're facing, 45m range

@@ -56,38 +56,6 @@ public static class LastStandShots
         Shot(dir, "06_sky_horizon", new Vector3(0, 2f, -16f), new Vector3(-30f, 14f, 60f), 90f);
         Shot(dir, "07_stairs_east", new Vector3(30f, 3f, -2f), new Vector3(18f, 3f, 10f), 80f);
 
-        // Enemy lineup: a row of each kind in front of a camera
-        var kinds = new[] { Enemy.Kind.Grunt, Enemy.Kind.Elite, Enemy.Kind.Ranger, Enemy.Kind.General, Enemy.Kind.Zealot };
-        var spawned = new System.Collections.Generic.List<GameObject>();
-        for (int i = 0; i < kinds.Length; i++)
-        {
-            var prefab = Resources.Load<GameObject>("Enemies/" + kinds[i]);
-            if (!prefab) continue;
-            var e = (GameObject)Object.Instantiate(prefab, new Vector3(-8f + i * 4f, 0f, -4f), Quaternion.Euler(0, 180f, 0));
-            foreach (var cc in e.GetComponentsInChildren<CharacterController>()) cc.enabled = false;
-            spawned.Add(e);
-        }
-        Shot(dir, "08_enemy_lineup", new Vector3(0f, 1.8f, -14f), new Vector3(0f, 1.7f, -4f), 50f);
-        Shot(dir, "09_elite_closeup", new Vector3(-3f, 1.9f, -9f), new Vector3(-4f, 1.7f, -4f), 45f);
-        foreach (var s in spawned) Object.DestroyImmediate(s);
-
-        var wraith = (GameObject)Object.Instantiate(Resources.Load<GameObject>("Enemies/Wraith"), new Vector3(0, 0, 14f), Quaternion.Euler(0, 180f, 0));
-        Shot(dir, "10_wraith", new Vector3(-6f, 3f, -4f), new Vector3(0f, 2f, 14f), 55f);
-        Object.DestroyImmediate(wraith);
-
-        // First-person view through the real Player prefab (forearms + weapon model in the Gun holder)
-        var playerPrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Player.prefab");
-        foreach (var id in new[] { "dmr", "ar", "shotgun", "sword", "sniper", "plasma", "concussion", "turret" })
-        {
-            var pl = (GameObject)PrefabUtility.InstantiatePrefab(playerPrefab);
-            pl.transform.position = new Vector3(0f, 1.0f, -16f);
-            var gun = pl.transform.Find("Camera/Gun");
-            var model = (GameObject)Object.Instantiate(Resources.Load<GameObject>("Weapons/" + id), gun);
-            model.transform.localPosition = Vector3.zero; model.transform.localRotation = Quaternion.identity;
-            var camT = pl.transform.Find("Camera");
-            Shot(dir, "11_view_" + id, camT.position, camT.position + Vector3.forward * 20f + Vector3.up * 0.3f, 80f);
-            Object.DestroyImmediate(pl);
-        }
         WriteSheets(dir);
         Debug.Log("LastStandShots: wrote screenshots to " + dir);
         if (Application.isBatchMode) EditorApplication.Exit(0);

@@ -14,7 +14,7 @@ public static partial class LastStandBuilder
 {
     const string ScenePath = "Assets/Scenes/LastStand.unity";
     const string Gen = "Assets/Generated";
-    const int Version = 12;                       // bump to make Unity rebuild the scene automatically
+    const int Version = 18;                       // bump to make Unity rebuild the scene automatically
     const string VersionFile = "Assets/Generated/builder_version.txt";
     static readonly Dictionary<string, Material> matCache = new Dictionary<string, Material>();
     static Texture2D panelTex, floorTex, containerTex, dirtTex, skyTex, grateTex;
@@ -50,7 +50,7 @@ public static partial class LastStandBuilder
     {
         try
         {
-            foreach (var d in new[] { Gen + "/Materials", Gen + "/Textures", "Assets/Resources/Weapons", "Assets/Resources/Pickups", "Assets/Resources/Enemies", "Assets/Prefabs", "Assets/Scenes" })
+            foreach (var d in new[] { Gen + "/Materials", Gen + "/Textures", "Assets/Resources/Weapons", "Assets/Resources/Pickups", "Assets/Resources/Enemies", "Assets/Resources/Sprites", "Assets/Prefabs/Models", "Assets/Prefabs", "Assets/Scenes" })
                 Directory.CreateDirectory(d);
             AssetDatabase.Refresh();
             matCache.Clear();
@@ -64,8 +64,13 @@ public static partial class LastStandBuilder
 
             foreach (var def in Weapons.All) BuildWeaponPrefab(def);
             BuildPickupPrefabs();
-            BuildEnemyPrefabs();
             var player = BuildPlayerPrefab();
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+
+            // Bake the 3D models into pixel-style sprite sheets (enemy facing angles + first-person weapon/arms)
+            LastStandSprites.BakeAll();
+            BuildEnemySpritePrefabs();
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
 
@@ -339,39 +344,13 @@ public static partial class LastStandBuilder
 
     // ---------- Enemies ----------
 
-    static void BuildEnemyPrefabs()
-    {
-        BuildEnemy(Enemy.Kind.Grunt, 0.42f, 1.85f, 1f, BuildGrunt);
-        BuildEnemy(Enemy.Kind.Elite, 0.5f, 2.9f, 1f, t => BuildElite(t, new Color(0.15f, 0.38f, 0.95f), false, false, false));
-        BuildEnemy(Enemy.Kind.Ranger, 0.5f, 2.9f, 1f, t => BuildElite(t, new Color(0.18f, 0.6f, 0.28f), false, true, false));
-        BuildEnemy(Enemy.Kind.General, 0.5f, 2.9f, 1.1f, t => BuildElite(t, new Color(0.9f, 0.68f, 0.12f), true, false, false));
-        BuildEnemy(Enemy.Kind.Zealot, 0.5f, 2.9f, 1.1f, t => BuildElite(t, new Color(0.95f, 0.78f, 0.25f), true, false, true));
-        BuildEnemy(Enemy.Kind.Wraith, 1.8f, 3.6f, 1f, BuildWraith);
-        BuildEnemy(Enemy.Kind.Banshee, 0f, 0f, 1f, BuildBanshee);
-    }
-
-    // Ground enemies get a CharacterController so walls, containers and stairs actually stop them
-    static void BuildEnemy(Enemy.Kind kind, float radius, float height, float scale, System.Action<Transform> build)
-    {
-        var root = new GameObject(kind.ToString());
-        var e = root.AddComponent<Enemy>(); e.kind = kind;
-        if (height > 0f)
-        {
-            var cc = root.AddComponent<CharacterController>();
-            cc.radius = radius; cc.height = height; cc.center = new Vector3(0, height / 2f, 0); cc.stepOffset = 0.6f; cc.slopeLimit = 50f;
-        }
-        build(root.transform);
-        root.transform.localScale = Vector3.one * scale;
-        SavePrefab(root, "Assets/Resources/Enemies/" + kind + ".prefab");
-    }
-
     static void BuildWraith(Transform t)
     {
         var hull = new Color(0.3f, 0.25f, 0.4f);
         G(t, PrimitiveType.Sphere, "Body", new Vector3(0, 1.4f, 0), new Vector3(4.5f, 1.8f, 6.5f), hull);
         G(t, PrimitiveType.Sphere, "Turret", new Vector3(0, 2.7f, -0.5f), new Vector3(1.8f, 1.2f, 1.8f), hull * 1.1f);
         G(t, PrimitiveType.Cube, "Cannon", new Vector3(0, 3.1f, 1.2f), new Vector3(0.4f, 0.4f, 2.4f), dark, 0f, new Vector3(-8f, 0, 0));
-        G(t, PrimitiveType.Sphere, "Underglow", new Vector3(0, 0.5f, 0), new Vector3(3.5f, 0.5f, 5f), new Color(0.6f, 0.4f, 1f), 3f);
+        G(t, PrimitiveType.Sphere, "Underglow", new Vector3(0, 0.5f, 0), new Vector3(3.5f, 0.5f, 5f), new Color(0.5f, 0.3f, 0.9f), 1.1f);
     }
 
     static void BuildBanshee(Transform t)
@@ -381,7 +360,7 @@ public static partial class LastStandBuilder
         foreach (float sx in new[] { -1f, 1f })
         {
             G(t, PrimitiveType.Cube, "Wing", new Vector3(sx * 1.6f, 0f, -0.4f), new Vector3(2.8f, 0.1f, 1.2f), hull * 0.9f, 0f, new Vector3(0, sx * -15f, sx * 10f), true);
-            G(t, PrimitiveType.Sphere, "Engine", new Vector3(sx * 0.5f, 0f, -1.5f), Vector3.one * 0.35f, new Color(0.8f, 0.4f, 1f), 3f);
+            G(t, PrimitiveType.Sphere, "Engine", new Vector3(sx * 0.5f, 0f, -1.5f), Vector3.one * 0.35f, new Color(0.7f, 0.35f, 0.95f), 1.3f);
         }
     }
 
@@ -398,23 +377,8 @@ public static partial class LastStandBuilder
         var c = cam.AddComponent<Camera>(); c.fieldOfView = 80f; c.nearClipPlane = 0.05f; c.farClipPlane = 400f;
         cam.AddComponent<AudioListener>();
         AttachPostFx(c);
-        var gun = new GameObject("Gun");                           // weapon models are parented here at runtime
+        var gun = new GameObject("Gun");                           // holds the muzzle light; the visible weapon is a 2D HUD sprite
         gun.transform.SetParent(cam.transform, false); gun.transform.localPosition = new Vector3(0.26f, -0.27f, 0.52f);
-
-        // First-person forearms: armored sleeves and gloves holding the weapon
-        var sleeve = Mat(new Color(0.2f, 0.26f, 0.18f), 0f, null, default(Vector2), 0.5f, "Standard", 0.4f);
-        var glove = Mat(new Color(0.07f, 0.07f, 0.08f), 0f, null, default(Vector2), 0.3f, "Standard", 0.1f);
-        var plate = Mat(new Color(0.3f, 0.36f, 0.24f), 0f, null, default(Vector2), 0.5f, "Standard", 0.5f);
-        var inner = Mat(new Color(0.1f, 0.1f, 0.11f), 0f, null, default(Vector2), 0.35f, "Standard", 0.3f);
-        var sleeveMat = Mat(new Color(0.22f, 0.27f, 0.17f), 0f, null, default(Vector2), 0.4f, "Standard", 0.3f);
-        // right arm: vambrace + angled plates + blocky glove gripping the weapon
-        Limb(gun.transform, PrimitiveType.Capsule, "ForearmR", new Vector3(0.075f, -0.13f, -0.1f), new Vector3(0.02f, -0.07f, -0.01f), 0.036f, sleeveMat);
-        Prim(PrimitiveType.Cube, gun.transform, "VambraceR", new Vector3(0.09f, -0.23f, -0.22f), new Vector3(0.08f, 0.05f, 0.2f), plate, false, new Vector3(-16f, 22f, 8f));
-        Glove(gun.transform, new Vector3(0.0f, -0.055f, 0.03f), inner);
-        // left arm: reaches forward under the barrel
-        Limb(gun.transform, PrimitiveType.Capsule, "ForearmL", new Vector3(-0.14f, -0.18f, 0.12f), new Vector3(-0.03f, -0.075f, 0.34f), 0.034f, sleeveMat);
-        Prim(PrimitiveType.Cube, gun.transform, "VambraceL", new Vector3(-0.2f, -0.23f, 0.08f), new Vector3(0.075f, 0.05f, 0.22f), plate, false, new Vector3(-8f, -22f, -10f));
-        Glove(gun.transform, new Vector3(-0.025f, -0.06f, 0.37f), inner);
 
         Ash(cam.transform);
         return SavePrefab(root, "Assets/Prefabs/Player.prefab");

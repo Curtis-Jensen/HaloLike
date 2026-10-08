@@ -228,7 +228,7 @@ public class Enemy : MonoBehaviour
         shield -= absorbed;
         health -= amount - absorbed;
         // Shield hits flash cyan, health hits flash white
-        SetColor(absorbed > 0f ? new Color(0.4f, 0.9f, 1f) : Color.white); flashUntil = Time.time + 0.06f;
+        SetColor(absorbed > 0f ? new Color(0.6f, 1.5f, 2f) : new Color(2f, 2f, 2f)); flashUntil = Time.time + 0.06f;
         if (health <= 0f)
         {
             dead = true;

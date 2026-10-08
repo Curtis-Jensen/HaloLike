@@ -8,6 +8,27 @@ public static class Spawner
     static readonly Color eliteMinor = new Color(0.14f, 0.3f, 0.7f), eliteMajor = new Color(0.68f, 0.2f, 0.12f), eliteUltra = new Color(0.72f, 0.74f, 0.78f);
     static readonly Color plasmaBlue = new Color(0.3f, 0.8f, 1f);
 
+    // The base armor color for a Grunt / Elite rank (other kinds: white, they have their own palettes)
+    public static Color RankColor(Enemy.Kind kind, Enemy.Rank rank)
+    {
+        if (kind == Enemy.Kind.Grunt) return rank == Enemy.Rank.Minor ? gruntMinor : rank == Enemy.Rank.Major ? gruntMajor : gruntUltra;
+        if (kind == Enemy.Kind.Elite) return rank == Enemy.Rank.Minor ? eliteMinor : rank == Enemy.Rank.Major ? eliteMajor : eliteUltra;
+        return Color.white;
+    }
+
+    // Rank color on all tagged armor parts (named *_A, darker variant *_AD); used by the old 3D bake path
+    public static void ApplyRankTint(GameObject root, Enemy.Kind kind, Enemy.Rank rank)
+    {
+        if (kind != Enemy.Kind.Grunt && kind != Enemy.Kind.Elite) return;
+        var c = kind == Enemy.Kind.Grunt ? (rank == Enemy.Rank.Minor ? gruntMinor : rank == Enemy.Rank.Major ? gruntMajor : gruntUltra)
+                                         : (rank == Enemy.Rank.Minor ? eliteMinor : rank == Enemy.Rank.Major ? eliteMajor : eliteUltra);
+        foreach (var rend in root.GetComponentsInChildren<Renderer>())
+        {
+            if (rend.name.EndsWith("_AD")) rend.material.color = c * 0.65f;
+            else if (rend.name.EndsWith("_A")) rend.material.color = c;
+        }
+    }
+
     // Don't spawn embedded in a wall, crate or container: search outward for open ground
     public static Vector3 FreeSpot(Vector3 pos, float radius)
     {
@@ -33,17 +54,8 @@ public static class Spawner
         e.kind = kind; e.rank = rank;
         int r = (int)rank;
 
-        // Rank color on all tagged armor parts (named *_A, darker variant *_AD)
-        if (kind == Enemy.Kind.Grunt || kind == Enemy.Kind.Elite)
-        {
-            var c = kind == Enemy.Kind.Grunt ? (rank == Enemy.Rank.Minor ? gruntMinor : rank == Enemy.Rank.Major ? gruntMajor : gruntUltra)
-                                             : (rank == Enemy.Rank.Minor ? eliteMinor : rank == Enemy.Rank.Major ? eliteMajor : eliteUltra);
-            foreach (var rend in root.GetComponentsInChildren<Renderer>())
-            {
-                if (rend.name.EndsWith("_AD")) rend.material.color = c * 0.65f;
-                else if (rend.name.EndsWith("_A")) rend.material.color = c;
-            }
-        }
+        var billboard = root.GetComponent<SpriteBillboard>();
+        if (billboard) billboard.Setup(kind, rank);
 
         switch (kind)
         {
