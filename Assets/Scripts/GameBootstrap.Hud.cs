@@ -181,22 +181,55 @@ public partial class GameBootstrap
         return tex;
     }
 
-    // Noble Six falls: fade to black over the helmet, then the epilogue
+    // Black-screen / text overlay for the ending: stab flash, cut to black, helmet in the dust, epilogue
     void DrawEnding(float w, float h)
     {
         float t = Time.time - endStart;
-        GUI.color = new Color(0f, 0f, 0f, Mathf.Clamp01((t - 3.5f) / 3.5f)); GUI.DrawTexture(new Rect(0, 0, w, h), white);
+        float black = 0f;
+        if (t >= TBlack && t < TBlack + 0.15f) black = 1f;
+        else if (t >= TBlack + 0.15f && t < TDustIn) black = 1f;
+        else if (t >= TDustIn && t < TDustIn + 1.2f) black = 1f - (t - TDustIn) / 1.2f;
+        else if (t >= TDustOut && t < TEpilogue) black = Mathf.Clamp01((t - TDustOut) / (TEpilogue - TDustOut)) + 0f;
+        if (t >= TEpilogue && t < TEpilogue + 1.5f) black = 1f - (t - TEpilogue) / 1.5f;
+        if (black > 0f) { GUI.color = new Color(0f, 0f, 0f, black); GUI.DrawTexture(new Rect(0, 0, w, h), white); }
+        if (t >= TStab && t < TStab + 0.25f) { GUI.color = new Color(0.8f, 0.95f, 1f, 0.5f * (1f - (t - TStab) / 0.25f)); GUI.DrawTexture(new Rect(0, 0, w, h), white); }
 
         big.fontSize = 44;
-        Fade(w, h * 0.22f, "NOBLE SIX", t, 7f, big);
-        Fade(w, h * 0.22f + 56f, "SPARTAN-B312 - MISSING IN ACTION", t, 8f, small);
-        Fade(w, h * 0.42f, "7 JULY 2589", t, 10f, small);
-        Fade(w, h * 0.42f + 34f, "Reach is glass and silence.", t, 10.8f, small);
-        Fade(w, h * 0.56f, "Dr. Halsey, recorded: Six held the line so the rest of us could carry on.", t, 12.5f, small);
-        Fade(w, h * 0.56f + 34f, "Everything that came after began with that stand.", t, 13.5f, small);
-        Fade(w, h * 0.74f, "You lasted " + FormatTime(Mathf.Max(0f, endStart - startTime)) + "   -   " + kills + " kills", t, 14.5f, small);
-        Fade(w, h * 0.74f + 40f, "Press ENTER to stand once more", t, 15.5f, small);
+        float p = TEpilogue;
+        Fade(w, h * 0.12f, "7 JULY 2589", t, p + 1.5f, big);
+        Fade(w, h * 0.78f, "Dr. Halsey, recorded:", t, p + 3f, small);
+        FadeSwap(w, h * 0.78f + 32f, t, new[] {
+            new KeyValuePair(p + 3.5f, "They were never quite fast enough. Six had already passed the torch."),
+            new KeyValuePair(p + 8f,   "Because of that stand we found Halo, learned its secrets, and broke the enemy's will."),
+            new KeyValuePair(p + 13f,  "I wish Six could have seen it. Six belongs to Reach now - armor and all, burned to glass."),
+            new KeyValuePair(p + 18f,  "But that courage was given to humanity, and humanity could rebuild."),
+        }, small);
+        Fade(w, h * 0.22f, "NOBLE SIX - MISSING IN ACTION", t, p + 2f, small);
+        if (t > p + 20f)
+        {
+            Fade(w, h * 0.40f, "You lasted " + FormatTime(Mathf.Max(0f, endStart - startTime)) + "   -   " + kills + " kills", t, p + 20f, small);
+            Fade(w, h * 0.40f + 40f, "Press ENTER to stand once more", t, p + 23f, small);
+        }
         GUI.color = Color.white;
+    }
+
+    struct KeyValuePair { public float start; public string text; public KeyValuePair(float s, string tx) { start = s; text = tx; } }
+
+    // Show one line at a time: each line fades in and the previous one fades out
+    void FadeSwap(float w, float y, float t, KeyValuePair[] lines, GUIStyle style)
+    {
+        for (int i = 0; i < lines.Length; i++)
+        {
+            float end = i + 1 < lines.Length ? lines[i + 1].start : lines[i].start + 5f;
+            if (t < lines[i].start || t > end + 1f) continue;
+            float a = Mathf.Clamp01((t - lines[i].start) / 1.2f) * Mathf.Clamp01((end + 1f - t) / 1f);
+            var c = style.normal.textColor; style.normal.textColor = new Color(1f, 1f, 1f, a);
+            GUI.color = Color.white;
+            var shadow = new GUIStyle(style); shadow.normal.textColor = new Color(0f, 0f, 0f, a * 0.8f);
+            GUI.Label(new Rect(2, y + 2, w, 60), lines[i].text, shadow);
+            GUI.Label(new Rect(0, y, w, 60), lines[i].text, style);
+            style.normal.textColor = c;
+        }
     }
 
     void Fade(float w, float y, string text, float t, float start, GUIStyle style)

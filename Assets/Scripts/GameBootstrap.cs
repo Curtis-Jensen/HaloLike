@@ -17,14 +17,12 @@ public partial class GameBootstrap : MonoBehaviour
     static GameBootstrap inst;
 
     int kills;
-    float helmetOff = -1f;
+    float helmetOff = -1f, nextBob;
+    bool bobAlive; Enemy bobRef;
     float startTime, nextSpawn, nextPhantom, finalStart, endStart = -1f;
     string banner = ""; float bannerUntil;
     readonly List<Vector3> spawnPoints = new List<Vector3>();
     Texture2D white, circleTex;
-    Transform helmet, deathCam, marshal;
-    Material floorMat;
-    Vector3 camStartPos; Quaternion camStartRot;
 
     void Awake()
     {
@@ -41,8 +39,6 @@ public partial class GameBootstrap : MonoBehaviour
             Debug.LogError("No SpawnPoints in the scene - run Tools > Last Stand > Build Scene");
             for (int i = 0; i < 12; i++) { float a = i * Mathf.PI / 6f; spawnPoints.Add(new Vector3(Mathf.Cos(a) * 50f, 0.5f, Mathf.Sin(a) * 50f)); }
         }
-        var floor = GameObject.Find("Level/Floor");
-        if (floor) floorMat = floor.GetComponent<Renderer>().material;
     }
 
     void Start()
@@ -72,6 +68,20 @@ public partial class GameBootstrap : MonoBehaviour
         int maxAlive = FinalStand ? 28 : Mathf.RoundToInt(Mathf.Lerp(5f, 22f, prog));
         float interval = FinalStand ? 0.8f : Mathf.Lerp(2.6f, 1f, prog);
         if (Time.time >= nextSpawn && Enemy.All.Count < maxAlive) { nextSpawn = Time.time + interval; SpawnNext(t); }
+
+        // "BOB": an Elite with an energy sword and far more aggressive AI, one at a time from 2 minutes on
+        if (!FinalStand && t > 120f && Time.time >= nextBob && !bobAlive)
+        {
+            nextBob = Time.time + 60f;
+            var bob = Spawner.Spawn(Enemy.Kind.Zealot, Enemy.Rank.Ultra, PickSpawnPoint(player.transform.position), 1f + Mathf.Min(t / 240f, 2f));
+            if (bob)
+            {
+                bob.name = "BOB"; bob.speed *= 1.15f; bob.shield *= 1.4f; bob.dropChance = 1f;
+                foreach (var r in bob.GetComponentsInChildren<Renderer>()) if (r.name == "Body") r.material.color = new Color(0.12f, 0.12f, 0.14f);
+                bobAlive = true; bobRef = bob;
+            }
+        }
+        if (bobAlive && !bobRef) bobAlive = false;
 
         if (!FinalStand && t >= nextPhantom)
         {
@@ -183,81 +193,9 @@ public partial class GameBootstrap : MonoBehaviour
         else { var d = Weapons.Scavenge[Random.Range(0, Weapons.Scavenge.Length)]; SpawnWeaponPickup(d, d.mag / 2, d.reserve / 3, pos); }
     }
 
-    // ---------- Death: the helmet, the fade, the epilogue ----------
+    // ---------- Death: see GameBootstrap.Ending.cs ----------
 
     public static void OnPlayerDeath(Player p, Camera cam) { if (inst) inst.StartEnding(p, cam); }
-
-    void StartEnding(Player p, Camera cam)
-    {
-        endStart = Time.time;
-        Cursor.visible = false;
-        Sfx.Play3D("sword", p.transform.position + p.transform.forward * 1.5f, 1f);   // the Zealot's energy blade
-        Sfx.Play2D("death");
-        Vector3 floorPos = p.transform.position;
-
-        // Noble Six's helmet, lying where they fell
-        var h = new GameObject("Helmet").transform;
-        h.position = floorPos + p.transform.forward * 0.4f + Vector3.up * 0.2f;
-        h.rotation = Quaternion.Euler(0f, p.transform.eulerAngles.y + 160f, 20f);
-        var shell = GameObject.CreatePrimitive(PrimitiveType.Sphere); Destroy(shell.GetComponent<Collider>());
-        shell.transform.SetParent(h, false); shell.transform.localScale = new Vector3(0.38f, 0.42f, 0.42f);
-        shell.GetComponent<Renderer>().material.color = new Color(0.45f, 0.5f, 0.4f);
-        var visor = GameObject.CreatePrimitive(PrimitiveType.Sphere); Destroy(visor.GetComponent<Collider>());
-        visor.transform.SetParent(h, false); visor.transform.localPosition = new Vector3(0, 0.03f, 0.13f); visor.transform.localScale = new Vector3(0.3f, 0.2f, 0.24f);
-        var vr = visor.GetComponent<Renderer>(); vr.material.color = new Color(1f, 0.7f, 0.1f);
-        vr.material.EnableKeyword("_EMISSION"); vr.material.SetColor("_EmissionColor", new Color(1f, 0.6f, 0.1f) * 1.2f);
-        helmet = h;
-
-        // Seven Sangheili close in on the fallen Spartan; two are Zealots
-        for (int i = 0; i < 7; i++)
-        {
-            float a = i * Mathf.PI * 2f / 7f + 0.4f;
-            Vector3 pos = floorPos + new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * 11f;
-            var e = Spawner.Spawn(i < 2 ? Enemy.Kind.Zealot : Enemy.Kind.Elite, Enemy.Rank.Ultra, pos, 1f);
-            if (e) e.transform.rotation = Quaternion.LookRotation(new Vector3(-Mathf.Cos(a), 0f, -Mathf.Sin(a)));
-        }
-
-        // A towering silhouette waits at the edge of the circle (hidden until the fade begins)
-        var m = Spawner.Spawn(Enemy.Kind.General, Enemy.Rank.Ultra, floorPos + p.transform.forward * -14f, 1f);
-        if (m)
-        {
-            m.transform.localScale = Vector3.one * 1.45f; m.enabled = false;
-            foreach (var r in m.GetComponentsInChildren<Renderer>()) r.material.color = Color.black;
-            m.transform.rotation = Quaternion.LookRotation(floorPos - m.transform.position);
-            m.gameObject.SetActive(false);
-            marshal = m.transform;
-        }
-
-        deathCam = cam.transform;
-        deathCam.SetParent(null);
-        camStartPos = deathCam.position; camStartRot = deathCam.rotation;
-    }
-
-    void UpdateEnding()
-    {
-        if (endStart < 0f) return;
-        float t = Time.time - endStart;
-        Sfx.MusicVolume = Mathf.Lerp(0.4f, 0f, t / 4f);
-
-        if (deathCam && helmet)
-        {
-            // The camera sinks to the ground and settles on the helmet
-            Vector3 back = -Vector3.ProjectOnPlane(helmet.forward, Vector3.up).normalized;
-            Vector3 target = helmet.position + back * 1.3f + Vector3.up * 0.45f + Vector3.Cross(Vector3.up, back) * 0.5f;
-            float k = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(t / 3.5f));
-            deathCam.position = Vector3.Lerp(camStartPos, target, k);
-            deathCam.rotation = Quaternion.Slerp(camStartRot, Quaternion.LookRotation(helmet.position - target), k);
-        }
-        if (marshal && !marshal.gameObject.activeSelf && t > 4.5f) marshal.gameObject.SetActive(true);
-
-        // Reach is glassed: the world burns down to a molten orange glow
-        float glow = Mathf.Clamp01((t - 7f) / 5f);
-        RenderSettings.fogColor = Color.Lerp(new Color(0.42f, 0.3f, 0.34f), new Color(0.75f, 0.2f, 0.05f), glow);
-        if (floorMat) { floorMat.EnableKeyword("_EMISSION"); floorMat.SetColor("_EmissionColor", new Color(0.8f, 0.2f, 0.03f) * glow * 0.6f); }
-
-        if (t > 15f && Input.GetKeyDown(KeyCode.Return))
-            UnityEngine.SceneManagement.SceneManager.LoadScene(UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex);
-    }
 
     static string FormatTime(float s) { int m = (int)(s / 60f); return m.ToString("00") + ":" + ((int)s % 60).ToString("00"); }
 }
