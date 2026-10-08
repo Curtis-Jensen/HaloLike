@@ -60,27 +60,31 @@ public static partial class LastStandBuilder
                 Flames(fire, new Vector3(0, 0.3f, 0));
             }
         var plumes = Group(dress, "HorizonSmoke");
-        for (int i = 0; i < 8; i++)
+        for (int i = 0; i < 5; i++)
         {
-            float a = i * Mathf.PI * 2f / 8f + 0.2f, dist = 190f + (i % 3) * 40f;
+            float a = i * Mathf.PI * 2f / 5f + 0.5f, dist = 230f + (i % 3) * 50f;
             Smoke(plumes, new Vector3(Mathf.Cos(a) * dist, 0f, Mathf.Sin(a) * dist), 28f, 60f);
         }
 
-        // Covenant glassing: purple beams on the horizon and ships holding station in the smoke
+        // Covenant ships holding station in the smoke, raking the ground with thin plasma lines
         var sky = Group(dress, "Sky");
-        var beamMat = Mat(new Color(0.7f, 0.4f, 1f, 0.22f), 0f, null, default(Vector2), 0f, "Sprites/Default");
-        foreach (var bp in new[] { new Vector2(260f, 120f), new Vector2(-240f, 200f), new Vector2(40f, 290f), new Vector2(-120f, -280f) })
-            Prim(PrimitiveType.Cylinder, sky, "GlassingBeam", new Vector3(bp.x, 220f, bp.y), new Vector3(7f, 220f, 7f), beamMat, false);
-        var shipMat = Mat(new Color(0.22f, 0.18f, 0.3f), 0f, null, default(Vector2), 0f, "Sprites/Default");
-        var lineMat = Mat(new Color(0.75f, 0.6f, 1f, 0.6f), 0f, null, default(Vector2), 0f, "Sprites/Default");
-        foreach (var sp in new[] { new Vector3(120f, 75f, 150f), new Vector3(-150f, 90f, 90f), new Vector3(30f, 65f, 210f) })
+        var hullMat = Mat(new Color(0.22f, 0.16f, 0.36f), 0f, null, default(Vector2), 0f, "Sprites/Default");
+        var hullLight = Mat(new Color(0.45f, 0.36f, 0.7f), 0f, null, default(Vector2), 0f, "Sprites/Default");
+        var glowMat = ParticleMat("Legacy Shaders/Particles/Additive", new Color(0.6f, 0.4f, 1f, 0.8f));
+        var lineMat = ParticleMat("Legacy Shaders/Particles/Additive", new Color(0.7f, 0.55f, 1f, 0.35f));
+        int shipIdx = 0;
+        foreach (var sp in new[] { new Vector3(120f, 78f, 180f), new Vector3(-170f, 92f, 120f) })
         {
-            var ship = Group(sky, "CovenantShip"); ship.position = sp; ship.rotation = Quaternion.Euler(0, Mathf.Atan2(-sp.x, -sp.z) * Mathf.Rad2Deg + 90f, 0);
-            Prim(PrimitiveType.Sphere, ship, "Hull", Vector3.zero, new Vector3(34f, 9f, 16f), shipMat, false);
-            Prim(PrimitiveType.Cube, ship, "WingL", new Vector3(-9f, 1f, -5f), new Vector3(14f, 1.2f, 9f), shipMat, false, new Vector3(0, 18f, 8f));
-            Prim(PrimitiveType.Cube, ship, "WingR", new Vector3(9f, 1f, -5f), new Vector3(14f, 1.2f, 9f), shipMat, false, new Vector3(0, -18f, -8f));
-            // plasma lines raking the ground
-            var line = Prim(PrimitiveType.Cube, ship, "PlasmaLine", new Vector3(0, -30f, 0), new Vector3(0.35f, 70f, 0.35f), lineMat, false, new Vector3(0, 0, Random.Range(-14f, 14f)));
+            var ship = Group(sky, "CovenantShip"); ship.position = sp; ship.rotation = Quaternion.Euler(0, Mathf.Atan2(-sp.x, -sp.z) * Mathf.Rad2Deg + 90f + (shipIdx++) * 20f, 0);
+            ship.localScale = Vector3.one * 0.8f;
+            Prim(PrimitiveType.Sphere, ship, "Hull", Vector3.zero, new Vector3(30f, 7f, 12f), hullMat, false);
+            Prim(PrimitiveType.Sphere, ship, "Dorsal", new Vector3(-3f, 3f, 0), new Vector3(16f, 4f, 7f), hullLight, false);
+            Prim(PrimitiveType.Cube, ship, "SweepL", new Vector3(-11f, 1f, -6f), new Vector3(16f, 0.8f, 5f), hullMat, false, new Vector3(0, 28f, 12f));
+            Prim(PrimitiveType.Cube, ship, "SweepR", new Vector3(-11f, 1f, 6f), new Vector3(16f, 0.8f, 5f), hullMat, false, new Vector3(0, -28f, -12f));
+            Prim(PrimitiveType.Cube, ship, "Belly", new Vector3(2f, -3.1f, 0), new Vector3(12f, 0.25f, 2.2f), Mat(new Color(0.7f, 0.5f, 1f), 0f, null, default(Vector2), 0f, "Sprites/Default"), false);
+            // two thin angled plasma lines from the belly to the ground
+            for (int k = 0; k < 2; k++)
+                Prim(PrimitiveType.Cube, ship, "PlasmaLine", new Vector3(k * 4f - 2f, -sp.y * 0.5f, 0), new Vector3(0.2f, sp.y * 1.05f, 0.2f), lineMat, false, new Vector3(k * 8f - 4f, 0, 7f + k * 6f));
         }
     }
 
@@ -115,15 +119,29 @@ public static partial class LastStandBuilder
             LampPost(g, new Vector3(sx, 1f, -21f));
     }
 
+    // Chunky grey military crate: body, lid, handle strips, stenciled arrow
+    static void MilCrate(Transform parent, string name, Vector3 pos, float size)
+    {
+        var g = Group(parent, name); g.position = pos;
+        var c = Mat(new Color(0.3f, 0.33f, 0.3f), 0f, panelTex, new Vector2(1f, 1f), 0.35f, "Standard", 0.4f);
+        var body = Prim(PrimitiveType.Cube, g, "CrateBody", Vector3.zero, new Vector3(size, size, size), c, true);
+        Prim(PrimitiveType.Cube, g, "Lid", new Vector3(0, size * 0.46f, 0), new Vector3(size * 1.04f, size * 0.1f, size * 1.04f), Mat(new Color(0.24f, 0.26f, 0.24f), 0f, null, default(Vector2), 0.4f, "Standard", 0.4f), false);
+        Prim(PrimitiveType.Cube, g, "Band", new Vector3(0, 0, 0), new Vector3(size * 1.03f, size * 0.12f, size * 1.03f), Mat(new Color(0.14f, 0.15f, 0.14f)), false);
+        foreach (float s in new[] { -1f, 1f }) Prim(PrimitiveType.Cube, g, "Handle", new Vector3(s * size * 0.52f, size * 0.15f, 0), new Vector3(size * 0.05f, size * 0.07f, size * 0.3f), Mat(new Color(0.08f, 0.08f, 0.08f)), false);
+        Prim(PrimitiveType.Cube, g, "Stencil", new Vector3(0, size * 0.2f, size * 0.51f), new Vector3(size * 0.3f, size * 0.12f, 0.01f), Mat(new Color(0.9f, 0.7f, 0.1f), 0.4f), false);
+        GameObjectUtility.SetStaticEditorFlags(body, StaticEditorFlags.BatchingStatic);
+    }
+
     static void LampPost(Transform parent, Vector3 pos)
     {
         var g = Group(parent, "LampPost"); g.position = pos;
         var steel = Mat(new Color(0.25f, 0.26f, 0.28f), 0f, null, default(Vector2), 0.35f, "Standard", 0.6f);
-        Prim(PrimitiveType.Cylinder, g, "Pole", new Vector3(0, 3.2f, 0), new Vector3(0.18f, 3.2f, 0.18f), steel, true);
-        Prim(PrimitiveType.Cube, g, "Arm", new Vector3(0.5f, 6.35f, 0), new Vector3(1.3f, 0.1f, 0.12f), steel, false);
-        Prim(PrimitiveType.Cube, g, "Head", new Vector3(1.05f, 6.25f, 0), new Vector3(0.7f, 0.12f, 0.3f), steel, false);
-        Prim(PrimitiveType.Cube, g, "Lens", new Vector3(1.05f, 6.17f, 0), new Vector3(0.6f, 0.04f, 0.24f), Mat(new Color(0.85f, 0.95f, 1f), 3f), false);
-        var l = AddLight(g, new Vector3(1.05f, 5.9f, 0), new Color(0.85f, 0.92f, 1f), 24f, 1.5f);
+        Prim(PrimitiveType.Cylinder, g, "Pole", new Vector3(0, 3.8f, 0), new Vector3(0.22f, 3.8f, 0.22f), steel, true);
+        Prim(PrimitiveType.Cube, g, "Arm", new Vector3(0.6f, 7.4f, 0), new Vector3(1.6f, 0.12f, 0.14f), steel, false, new Vector3(0, 0, -6f));
+        Prim(PrimitiveType.Cube, g, "Head", new Vector3(1.4f, 7.2f, 0), new Vector3(1.0f, 0.16f, 0.45f), steel, false, new Vector3(0, 0, -8f));
+        Prim(PrimitiveType.Cube, g, "Lens", new Vector3(1.4f, 7.1f, 0), new Vector3(0.9f, 0.04f, 0.38f), Mat(new Color(0.8f, 0.9f, 1f), 1.8f), false, new Vector3(0, 0, -8f));
+        Prim(PrimitiveType.Sphere, g, "Halo", new Vector3(1.4f, 7.0f, 0), Vector3.one * 1.6f, ParticleMat("Legacy Shaders/Particles/Additive", new Color(0.55f, 0.7f, 1f, 0.12f)), false);
+        var l = AddLight(g, new Vector3(1.4f, 6.8f, 0), new Color(0.85f, 0.92f, 1f), 26f, 1.7f);
         l.name = "LampLight";
     }
 
@@ -173,8 +191,8 @@ public static partial class LastStandBuilder
     // A lying marine / ODST with a dropped rifle
     static void DeadTrooper(Transform parent, Vector3 pos, float yaw, bool odst)
     {
-        var g = Group(parent, "DeadTrooper"); g.position = pos; g.rotation = Quaternion.Euler(0, yaw, 0);
-        var armor = Mat(odst ? new Color(0.17f, 0.18f, 0.22f) : new Color(0.2f, 0.28f, 0.17f), 0f, null, default(Vector2), 0.35f, "Standard", 0.3f);
+        var g = Group(parent, "DeadTrooper"); g.position = pos; g.rotation = Quaternion.Euler(0, yaw, 0); g.localScale = Vector3.one * 1.5f;
+        var armor = Mat(odst ? new Color(0.28f, 0.3f, 0.38f) : new Color(0.32f, 0.42f, 0.26f), 0f, null, default(Vector2), 0.35f, "Standard", 0.3f);
         var suit = Mat(new Color(0.12f, 0.12f, 0.13f));
         var gunMat = Mat(new Color(0.07f, 0.07f, 0.08f), 0f, null, default(Vector2), 0.5f, "Standard", 0.7f);
         Prim(PrimitiveType.Capsule, g, "Torso", new Vector3(0, 0.2f, 0), new Vector3(0.42f, 0.32f, 0.3f), armor, false, new Vector3(90f, 0, 0));
@@ -214,7 +232,7 @@ public static partial class LastStandBuilder
         var ps = NewSystem(parent, "Smoke", pos);
         var main = ps.main; main.loop = true; main.prewarm = true; main.startLifetime = lifetime; main.startSpeed = 1.2f + size * 0.05f;
         main.startSize = new ParticleSystem.MinMaxCurve(1.5f * size, 2.5f * size);
-        main.startColor = new Color(0.16f, 0.13f, 0.12f, 0.5f);
+        main.startColor = size > 10f ? new Color(0.09f, 0.07f, 0.065f, 0.7f) : new Color(0.16f, 0.13f, 0.12f, 0.5f);
         main.simulationSpace = ParticleSystemSimulationSpace.World; main.maxParticles = 60 + (int)size * 4; main.gravityModifier = -0.02f;
         var em = ps.emission; em.rateOverTime = Mathf.Max(1.5f, 9f / Mathf.Sqrt(size));
         var sh = ps.shape; sh.shapeType = ParticleSystemShapeType.Cone; sh.angle = 10f; sh.radius = 0.4f * size;

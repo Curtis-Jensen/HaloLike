@@ -3,13 +3,13 @@ using UnityEngine;
 // Covenant character models built from primitives: proper limbs, armor plates, mandibles, held weapons.
 public static partial class LastStandBuilder
 {
-    static Material Armor(Color c, float glow = 0f) { return Mat(c, glow, null, default(Vector2), 0.55f, "Standard", 0.45f); }
+    static Material Armor(Color c, float glow = 0f) { return Mat(c, glow, null, default(Vector2), 0.5f, "Standard", 0.2f); }
     static Material Suit(Color c) { return Mat(c, 0f, null, default(Vector2), 0.15f, "Standard", 0f); }
 
     // Unggoy: squat, hunched, methane tank, breather mask, plasma pistol
     static void BuildGrunt(Transform t)
     {
-        var skin = Suit(new Color(0.26f, 0.2f, 0.32f)); var body = Armor(new Color(0.45f, 0.3f, 0.7f));
+        var skin = Suit(new Color(0.26f, 0.2f, 0.32f)); var body = Armor(new Color(0.9f, 0.45f, 0.1f));
         var dark = Suit(new Color(0.08f, 0.08f, 0.1f));
         foreach (float s in new[] { -1f, 1f })
         {
@@ -18,7 +18,7 @@ public static partial class LastStandBuilder
             Limb(t, PrimitiveType.Capsule, "Arm", new Vector3(s * 0.34f, 1.25f, 0.0f), new Vector3(s * 0.2f, 0.98f, 0.42f), 0.14f, skin);
         }
         var bodyGo = Prim(PrimitiveType.Capsule, t, "Body", new Vector3(0, 1.0f, 0), new Vector3(0.62f, 0.46f, 0.55f), body);
-        Prim(PrimitiveType.Cube, t, "ChestPlate", new Vector3(0, 1.1f, 0.2f), new Vector3(0.45f, 0.32f, 0.12f), Armor(new Color(0.3f, 0.2f, 0.5f)));
+        Prim(PrimitiveType.Cube, t, "ChestPlate", new Vector3(0, 1.1f, 0.2f), new Vector3(0.45f, 0.32f, 0.12f), Armor(new Color(0.55f, 0.25f, 0.06f)));
         Prim(PrimitiveType.Sphere, t, "Head", new Vector3(0, 1.6f, 0.1f), new Vector3(0.42f, 0.4f, 0.44f), Suit(new Color(0.55f, 0.4f, 0.28f)));
         Prim(PrimitiveType.Cube, t, "Mask", new Vector3(0, 1.55f, 0.3f), new Vector3(0.3f, 0.22f, 0.1f), dark);
         Prim(PrimitiveType.Cylinder, t, "Hose", new Vector3(0, 1.43f, 0.34f), new Vector3(0.05f, 0.1f, 0.05f), dark, false, new Vector3(90f, 0, 0));
@@ -30,9 +30,11 @@ public static partial class LastStandBuilder
         // plasma pistol held forward
         Prim(PrimitiveType.Cube, t, "Pistol", new Vector3(0.2f, 0.98f, 0.55f), new Vector3(0.1f, 0.14f, 0.34f), Armor(new Color(0.2f, 0.45f, 0.25f)));
         Prim(PrimitiveType.Sphere, t, "PistolGlow", new Vector3(0.2f, 0.99f, 0.75f), Vector3.one * 0.1f, Mat(new Color(0.3f, 1f, 0.4f), 3f));
+        TagArmor(t, new[] { "Body" }, new[] { "ChestPlate" });
+        LeanUpperBody(t, new Vector3(0f, 0.75f, 0f), 16f, new[] { "Leg", "Foot" });
     }
 
-    static Material ArmorT(Color col) { return Mat(col, 0f, panelTex, new Vector2(1.5f, 1.5f), 0.5f, "Standard", 0.5f); }   // weathered plated armor
+    static Material ArmorT(Color col) { return Mat(col, 0f, null, default(Vector2), 0.55f, "Standard", 0.25f); }   // glossy painted armor; Spawner tints parts named *_A / *_AD per rank
 
     // Sangheili: tall digitigrade warriors in segmented armor, two-handed plasma rifle (or energy sword)
     static void BuildElite(Transform t, Color bodyColor, bool crest, bool jetpack, bool sword)
@@ -89,11 +91,40 @@ public static partial class LastStandBuilder
             Prim(PrimitiveType.Cube, t, "SwordHilt", new Vector3(0.32f, 1.64f, 0.72f), new Vector3(0.09f, 0.09f, 0.28f), dark);
             Prim(PrimitiveType.Cube, t, "EnergySword", new Vector3(0.32f, 1.64f, 1.46f), new Vector3(0.05f, 0.2f, 1.25f), Mat(new Color(0.4f, 0.85f, 1f), 3.5f));
         }
-        if (crest) Prim(PrimitiveType.Cube, t, "Crest", new Vector3(0, 2.9f, 0.0f), new Vector3(0.1f, 0.34f, 0.64f), Armor(gold, 1.2f), false, new Vector3(-12f, 0, 0));
+        if (crest) Prim(PrimitiveType.Cube, t, "Crest", new Vector3(0, 2.8f, -0.05f), new Vector3(0.08f, 0.12f, 0.5f), ArmorT(bodyColor * 0.5f), false, new Vector3(-8f, 0, 0));   // low ridge, not a plume
         if (jetpack)
         {
             Prim(PrimitiveType.Cube, t, "Jetpack", new Vector3(0, 1.9f, -0.42f), new Vector3(0.56f, 0.74f, 0.3f), Armor(new Color(0.15f, 0.15f, 0.18f)));
             foreach (float s in new[] { -1f, 1f }) Prim(PrimitiveType.Sphere, t, "Thruster", new Vector3(s * 0.17f, 1.5f, -0.48f), Vector3.one * 0.2f, Mat(new Color(1f, 0.6f, 0.2f), 3f));
         }
+        TagArmor(t, new[] { "Body", "KneePlate", "HipPlate", "Belt", "Pauldron", "BracerR", "BracerL" },
+                    new[] { "Thigh", "Greave", "Pelvis", "ChestPlate", "Spine", "PauldronCap", "UpperArm", "Head", "BrowRidge", "Crest" });
+        LeanUpperBody(t, new Vector3(0f, 1.3f, 0f), 18f, new[] { "Thigh", "Shin", "Greave", "Foot", "Toe", "KneePlate", "HipPlate", "Pelvis", "Belt" });
+    }
+
+    // Names armor renderers "_A" (rank color) / "_AD" (darker rank color) so Spawner can tint a whole suit per rank
+    static void TagArmor(Transform t, string[] light, string[] dark)
+    {
+        foreach (Transform ch in t)
+        {
+            if (System.Array.IndexOf(light, ch.name) >= 0) ch.name += "_A";
+            else if (System.Array.IndexOf(dark, ch.name) >= 0) ch.name += "_AD";
+        }
+    }
+
+    // Hunched Sangheili posture: everything above the pelvis pivots forward about the hips
+    static void LeanUpperBody(Transform t, Vector3 pivotPos, float degrees, string[] lowerNames)
+    {
+        var pivot = new GameObject("Upper").transform;
+        pivot.SetParent(t, false); pivot.localPosition = pivotPos;
+        var move = new System.Collections.Generic.List<Transform>();
+        foreach (Transform ch in t)
+        {
+            if (ch == pivot) continue;
+            string n = ch.name; int us = n.LastIndexOf('_'); string baseName = us > 0 && (n.EndsWith("_A") || n.EndsWith("_AD")) ? n.Substring(0, us) : n;
+            if (System.Array.IndexOf(lowerNames, baseName) < 0) move.Add(ch);
+        }
+        foreach (var ch in move) ch.SetParent(pivot, true);
+        pivot.localRotation = Quaternion.Euler(degrees, 0f, 0f);
     }
 }

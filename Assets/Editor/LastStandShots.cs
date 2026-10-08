@@ -8,7 +8,32 @@ using UnityEngine;
 // Headless: Unity -batchmode -projectPath <p> -executeMethod LastStandShots.CaptureAll   (needs a GPU, so no -nographics)
 public static class LastStandShots
 {
-    const int W = 1920, H = 1080;
+    const int W = 1920, H = 1080, TW = 640, TH = 360;
+    static readonly System.Collections.Generic.List<Texture2D> thumbs = new System.Collections.Generic.List<Texture2D>();
+    static readonly System.Collections.Generic.List<string> thumbNames = new System.Collections.Generic.List<string>();
+
+    // SHOTS="01,08,11_view_dmr" limits which shots are rendered (prefix match); unset = all
+    static bool Wanted(string name)
+    {
+        var f = System.Environment.GetEnvironmentVariable("SHOTS");
+        if (string.IsNullOrEmpty(f)) return true;
+        foreach (var k in f.Split(',')) if (name.StartsWith(k.Trim())) return true;
+        return false;
+    }
+
+    // Stitches the rendered shots into 3x3 contact sheets (640x360 tiles = one 1920x1080 image per 9 shots)
+    static void WriteSheets(string dir)
+    {
+        for (int sheet = 0; sheet * 9 < thumbs.Count; sheet++)
+        {
+            var tex = new Texture2D(TW * 3, TH * 3, TextureFormat.RGB24, false);
+            for (int i = 0; i < 9 && sheet * 9 + i < thumbs.Count; i++)
+                tex.SetPixels((i % 3) * TW, (2 - i / 3) * TH, TW, TH, thumbs[sheet * 9 + i].GetPixels());
+            File.WriteAllBytes(Path.Combine(dir, "sheet_" + (char)('A' + sheet) + ".png"), tex.EncodeToPNG());
+            Object.DestroyImmediate(tex);
+        }
+        File.WriteAllText(Path.Combine(dir, "sheets.txt"), string.Join("\n", thumbNames));
+    }
 
     // Rebuilds the scene with the current builder, then captures (used for headless review runs)
     public static void BuildAndCapture() { LastStandBuilder.BuildAll(); CaptureAll(); }
@@ -63,6 +88,7 @@ public static class LastStandShots
             Shot(dir, "11_view_" + id, camT.position, camT.position + Vector3.forward * 20f + Vector3.up * 0.3f, 80f);
             Object.DestroyImmediate(pl);
         }
+        WriteSheets(dir);
         Debug.Log("LastStandShots: wrote screenshots to " + dir);
         if (Application.isBatchMode) EditorApplication.Exit(0);
     }
@@ -91,6 +117,7 @@ public static class LastStandShots
 
     static void Shot(string dir, string name, Vector3 pos, Vector3 look, float fov)
     {
+        if (!Wanted(name)) return;
         var go = new GameObject("ShotCam");
         var cam = go.AddComponent<Camera>();
         cam.transform.position = pos; cam.transform.LookAt(look);
@@ -103,6 +130,10 @@ public static class LastStandShots
         var tex = new Texture2D(W, H, TextureFormat.RGB24, false);
         tex.ReadPixels(new Rect(0, 0, W, H), 0, 0); tex.Apply();
         File.WriteAllBytes(Path.Combine(dir, name + ".png"), tex.EncodeToPNG());
+        var small = new RenderTexture(TW, TH, 0); Graphics.Blit(rt, small);
+        RenderTexture.active = small;
+        var thumb = new Texture2D(TW, TH, TextureFormat.RGB24, false); thumb.ReadPixels(new Rect(0, 0, TW, TH), 0, 0); thumb.Apply();
+        thumbs.Add(thumb); thumbNames.Add(name); RenderTexture.active = rt; Object.DestroyImmediate(small);
         RenderTexture.active = prev;
         Object.DestroyImmediate(tex); Object.DestroyImmediate(rt); Object.DestroyImmediate(go);
     }

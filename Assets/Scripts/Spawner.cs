@@ -4,8 +4,8 @@ using UnityEngine;
 // and applies per-rank stats and colors. Edit the prefabs to change how an enemy looks.
 public static class Spawner
 {
-    static readonly Color gruntMinor = new Color(0.45f, 0.3f, 0.7f), gruntMajor = new Color(0.75f, 0.3f, 0.25f), gruntUltra = new Color(0.9f, 0.85f, 0.4f);
-    static readonly Color eliteMinor = new Color(0.2f, 0.35f, 0.8f), eliteMajor = new Color(0.75f, 0.2f, 0.2f), eliteUltra = new Color(0.85f, 0.85f, 0.9f);
+    static readonly Color gruntMinor = new Color(0.92f, 0.46f, 0.1f), gruntMajor = new Color(0.85f, 0.18f, 0.12f), gruntUltra = new Color(0.95f, 0.8f, 0.25f);
+    static readonly Color eliteMinor = new Color(0.15f, 0.38f, 0.95f), eliteMajor = new Color(0.9f, 0.22f, 0.1f), eliteUltra = new Color(0.88f, 0.9f, 0.95f);
     static readonly Color plasmaBlue = new Color(0.3f, 0.8f, 1f);
 
     // Don't spawn embedded in a wall, crate or container: search outward for open ground
@@ -33,13 +33,16 @@ public static class Spawner
         e.kind = kind; e.rank = rank;
         int r = (int)rank;
 
-        // Rank color on the body (Minor / Major / Ultra)
-        var body = root.transform.Find("Body");
-        if (body && (kind == Enemy.Kind.Grunt || kind == Enemy.Kind.Elite))
+        // Rank color on all tagged armor parts (named *_A, darker variant *_AD)
+        if (kind == Enemy.Kind.Grunt || kind == Enemy.Kind.Elite)
         {
             var c = kind == Enemy.Kind.Grunt ? (rank == Enemy.Rank.Minor ? gruntMinor : rank == Enemy.Rank.Major ? gruntMajor : gruntUltra)
                                              : (rank == Enemy.Rank.Minor ? eliteMinor : rank == Enemy.Rank.Major ? eliteMajor : eliteUltra);
-            body.GetComponent<Renderer>().material.color = c;
+            foreach (var rend in root.GetComponentsInChildren<Renderer>())
+            {
+                if (rend.name.EndsWith("_AD")) rend.material.color = c * 0.65f;
+                else if (rend.name.EndsWith("_A")) rend.material.color = c;
+            }
         }
 
         switch (kind)

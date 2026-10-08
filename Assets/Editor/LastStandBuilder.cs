@@ -14,12 +14,12 @@ public static partial class LastStandBuilder
 {
     const string ScenePath = "Assets/Scenes/LastStand.unity";
     const string Gen = "Assets/Generated";
-    const int Version = 6;                       // bump to make Unity rebuild the scene automatically
+    const int Version = 10;                       // bump to make Unity rebuild the scene automatically
     const string VersionFile = "Assets/Generated/builder_version.txt";
     static readonly Dictionary<string, Material> matCache = new Dictionary<string, Material>();
-    static Texture2D panelTex, floorTex, containerTex, dirtTex, skyTex;
+    static Texture2D panelTex, floorTex, containerTex, dirtTex, skyTex, grateTex;
 
-    static readonly Color olive = new Color(0.24f, 0.3f, 0.2f), metal = new Color(0.17f, 0.18f, 0.2f), steel = new Color(0.55f, 0.57f, 0.6f),
+    static readonly Color olive = new Color(0.26f, 0.32f, 0.2f), gunmetal = new Color(0.13f, 0.14f, 0.16f), metal = new Color(0.17f, 0.18f, 0.2f), steel = new Color(0.55f, 0.57f, 0.6f),
                           black = new Color(0.05f, 0.05f, 0.06f), wood = new Color(0.36f, 0.22f, 0.12f), cyan = new Color(0.3f, 0.85f, 1f),
                           gold = new Color(0.9f, 0.7f, 0.2f), plasmaBlue = new Color(0.3f, 0.8f, 1f), dark = new Color(0.12f, 0.12f, 0.16f);
 
@@ -58,6 +58,7 @@ public static partial class LastStandBuilder
             panelTex = Tex("Plate", () => ProcTex.Plate(256), 8);
             floorTex = Tex("Concrete", () => ProcTex.Concrete(256), 8);
             containerTex = Tex("Corrugated", () => ProcTex.Corrugated(256), 8);
+            grateTex = Tex("Grate", () => ProcTex.Grate(256), 8);
             dirtTex = Tex("Dirt", () => ProcTex.Dirt(256), 8);
             skyTex = Tex("SmokeSky", () => ProcTex.SmokeSky(2048, 1024, 0.5f, 7f), 1);
 
@@ -195,7 +196,7 @@ public static partial class LastStandBuilder
         switch (id)
         {
             case "ar":
-                G(t, cube, "Body", new Vector3(0, 0, 0.25f), new Vector3(0.08f, 0.12f, 0.5f), olive);
+                G(t, cube, "Body", new Vector3(0, 0, 0.25f), new Vector3(0.08f, 0.12f, 0.5f), gunmetal);
                 G(t, cube, "Handguard", new Vector3(0, -0.005f, 0.58f), new Vector3(0.07f, 0.09f, 0.25f), metal);
                 G(t, cyl, "Barrel", new Vector3(0, 0.01f, 0.82f), new Vector3(0.025f, 0.12f, 0.025f), black, 0f, along);
                 G(t, cube, "CarryHandle", new Vector3(0, 0.1f, 0.2f), new Vector3(0.03f, 0.05f, 0.28f), metal);
@@ -209,7 +210,7 @@ public static partial class LastStandBuilder
                 G(t, cyl, "MuzzleBrake", new Vector3(0, 0.01f, 0.97f), new Vector3(0.032f, 0.03f, 0.032f), metal, 0f, along);
                 mz = new Vector3(0, 0.01f, 1.0f); break;
             case "dmr":
-                G(t, cube, "Body", new Vector3(0, 0, 0.3f), new Vector3(0.06f, 0.1f, 0.62f), olive);
+                G(t, cube, "Body", new Vector3(0, 0, 0.3f), new Vector3(0.06f, 0.1f, 0.62f), gunmetal);
                 G(t, cube, "Handguard", new Vector3(0, 0, 0.75f), new Vector3(0.05f, 0.08f, 0.3f), metal);
                 G(t, cyl, "Barrel", new Vector3(0, 0.01f, 1.1f), new Vector3(0.02f, 0.18f, 0.02f), black, 0f, along);
                 G(t, cyl, "Scope", new Vector3(0, 0.095f, 0.35f), new Vector3(0.04f, 0.13f, 0.04f), black, 0f, along);
@@ -251,8 +252,8 @@ public static partial class LastStandBuilder
                 G(t, cube, "Guard", new Vector3(0, 0, 0.22f), new Vector3(0.2f, 0.04f, 0.05f), steel);
                 G(t, cube, "ProngL", new Vector3(-0.1f, 0, 0.3f), new Vector3(0.02f, 0.03f, 0.16f), cyan, 3f);
                 G(t, cube, "ProngR", new Vector3(0.1f, 0, 0.3f), new Vector3(0.02f, 0.03f, 0.16f), cyan, 3f);
-                G(t, cube, "Blade", new Vector3(0, 0, 0.75f), new Vector3(0.012f, 0.1f, 0.9f), cyan, 3.5f);
-                G(t, cube, "Core", new Vector3(0, 0, 0.75f), new Vector3(0.014f, 0.04f, 0.88f), Color.white, 4f);
+                G(t, cube, "Blade", new Vector3(0, 0, 0.75f), new Vector3(0.014f, 0.1f, 0.9f), new Color(0.15f, 0.55f, 1f), 2.2f);
+                G(t, cube, "Core", new Vector3(0, 0, 0.75f), new Vector3(0.016f, 0.04f, 0.88f), new Color(0.6f, 0.85f, 1f), 1.6f);
                 AddLight(t, new Vector3(0, 0, 0.7f), cyan, 5f, 1f);
                 mz = new Vector3(0, 0, 1.2f); break;
             case "concussion":
@@ -311,7 +312,7 @@ public static partial class LastStandBuilder
             gGloss = 0.25f; gMetal = 0f;
             model.name = "Model"; model.transform.SetParent(root.transform, false);
             model.transform.localScale = Vector3.one * 1.15f; model.transform.localPosition = new Vector3(0, 0, -0.45f);
-            G(root.transform, PrimitiveType.Cylinder, "Marker", new Vector3(0, -0.35f, 0), new Vector3(0.55f, 0.01f, 0.55f), cyan, 2f);
+            G(root.transform, PrimitiveType.Cylinder, "Marker", new Vector3(0, -0.35f, 0), new Vector3(0.4f, 0.008f, 0.4f), cyan * 0.7f, 0.8f);
             AddLight(root.transform, new Vector3(0, 0.3f, 0), new Color(1f, 0.9f, 0.6f), 5f, 1.1f);
             SavePrefab(root, "Assets/Resources/Pickups/" + def.id + ".prefab");
         }
@@ -337,10 +338,10 @@ public static partial class LastStandBuilder
     static void BuildEnemyPrefabs()
     {
         BuildEnemy(Enemy.Kind.Grunt, 0.42f, 1.85f, 1f, BuildGrunt);
-        BuildEnemy(Enemy.Kind.Elite, 0.5f, 2.9f, 1f, t => BuildElite(t, new Color(0.2f, 0.35f, 0.8f), false, false, false));
-        BuildEnemy(Enemy.Kind.Ranger, 0.5f, 2.9f, 1f, t => BuildElite(t, new Color(0.2f, 0.55f, 0.3f), false, true, false));
-        BuildEnemy(Enemy.Kind.General, 0.5f, 2.9f, 1.1f, t => BuildElite(t, new Color(0.7f, 0.55f, 0.15f), true, false, false));
-        BuildEnemy(Enemy.Kind.Zealot, 0.5f, 2.9f, 1.1f, t => BuildElite(t, new Color(0.9f, 0.9f, 0.8f), true, false, true));
+        BuildEnemy(Enemy.Kind.Elite, 0.5f, 2.9f, 1f, t => BuildElite(t, new Color(0.15f, 0.38f, 0.95f), false, false, false));
+        BuildEnemy(Enemy.Kind.Ranger, 0.5f, 2.9f, 1f, t => BuildElite(t, new Color(0.18f, 0.6f, 0.28f), false, true, false));
+        BuildEnemy(Enemy.Kind.General, 0.5f, 2.9f, 1.1f, t => BuildElite(t, new Color(0.9f, 0.68f, 0.12f), true, false, false));
+        BuildEnemy(Enemy.Kind.Zealot, 0.5f, 2.9f, 1.1f, t => BuildElite(t, new Color(0.95f, 0.78f, 0.25f), true, false, true));
         BuildEnemy(Enemy.Kind.Wraith, 1.8f, 3.6f, 1f, BuildWraith);
         BuildEnemy(Enemy.Kind.Banshee, 0f, 0f, 1f, BuildBanshee);
     }
@@ -399,14 +400,30 @@ public static partial class LastStandBuilder
         // First-person forearms: armored sleeves and gloves holding the weapon
         var sleeve = Mat(new Color(0.2f, 0.26f, 0.18f), 0f, null, default(Vector2), 0.5f, "Standard", 0.4f);
         var glove = Mat(new Color(0.07f, 0.07f, 0.08f), 0f, null, default(Vector2), 0.3f, "Standard", 0.1f);
-        Limb(gun.transform, PrimitiveType.Capsule, "ForearmR", new Vector3(0.17f, -0.36f, -0.42f), new Vector3(0.025f, -0.075f, -0.01f), 0.06f, sleeve);
-        Prim(PrimitiveType.Sphere, gun.transform, "HandR", new Vector3(0.0f, -0.055f, 0.02f), new Vector3(0.06f, 0.055f, 0.085f), glove);
-        Limb(gun.transform, PrimitiveType.Capsule, "ForearmL", new Vector3(-0.36f, -0.37f, -0.12f), new Vector3(-0.03f, -0.075f, 0.34f), 0.055f, sleeve);
-        Prim(PrimitiveType.Sphere, gun.transform, "HandL", new Vector3(-0.025f, -0.055f, 0.355f), new Vector3(0.06f, 0.055f, 0.085f), glove);
-        Prim(PrimitiveType.Cube, gun.transform, "BracerL", new Vector3(-0.2f, -0.2f, 0.1f), new Vector3(0.07f, 0.05f, 0.14f), sleeve, false, new Vector3(0, 20f, 16f));
+        var plate = Mat(new Color(0.3f, 0.36f, 0.24f), 0f, null, default(Vector2), 0.5f, "Standard", 0.5f);
+        var inner = Mat(new Color(0.1f, 0.1f, 0.11f), 0f, null, default(Vector2), 0.35f, "Standard", 0.3f);
+        var sleeveMat = Mat(new Color(0.22f, 0.27f, 0.17f), 0f, null, default(Vector2), 0.4f, "Standard", 0.3f);
+        // right arm: vambrace + angled plates + blocky glove gripping the weapon
+        Limb(gun.transform, PrimitiveType.Capsule, "ForearmR", new Vector3(0.17f, -0.36f, -0.42f), new Vector3(0.025f, -0.075f, -0.02f), 0.05f, sleeveMat);
+        Prim(PrimitiveType.Cube, gun.transform, "VambraceR", new Vector3(0.09f, -0.23f, -0.22f), new Vector3(0.08f, 0.05f, 0.2f), plate, false, new Vector3(-16f, 22f, 8f));
+        Glove(gun.transform, new Vector3(0.0f, -0.055f, 0.03f), inner);
+        // left arm: reaches forward under the barrel
+        Limb(gun.transform, PrimitiveType.Capsule, "ForearmL", new Vector3(-0.36f, -0.37f, -0.12f), new Vector3(-0.03f, -0.075f, 0.34f), 0.047f, sleeveMat);
+        Prim(PrimitiveType.Cube, gun.transform, "VambraceL", new Vector3(-0.2f, -0.23f, 0.08f), new Vector3(0.075f, 0.05f, 0.22f), plate, false, new Vector3(-8f, -22f, -10f));
+        Glove(gun.transform, new Vector3(-0.025f, -0.06f, 0.37f), inner);
 
         Ash(cam.transform);
         return SavePrefab(root, "Assets/Prefabs/Player.prefab");
+    }
+
+    // Blocky glove: palm, four finger blocks and a thumb
+    static void Glove(Transform parent, Vector3 pos, Material mat)
+    {
+        var g = new GameObject("Glove").transform; g.SetParent(parent, false); g.localPosition = pos;
+        Prim(PrimitiveType.Cube, g, "Palm", Vector3.zero, new Vector3(0.07f, 0.04f, 0.085f), mat);
+        for (int i = 0; i < 4; i++)
+            Prim(PrimitiveType.Cube, g, "Finger" + i, new Vector3(-0.026f + i * 0.0175f, -0.012f, 0.055f), new Vector3(0.016f, 0.026f, 0.05f), mat, false, new Vector3(25f, 0, 0));
+        Prim(PrimitiveType.Cube, g, "Thumb", new Vector3(0.04f, 0.01f, 0.02f), new Vector3(0.02f, 0.022f, 0.06f), mat, false, new Vector3(0, -20f, 0));
     }
 
     // ---------- The scene ----------
@@ -422,6 +439,7 @@ public static partial class LastStandBuilder
 
         var player = (GameObject)PrefabUtility.InstantiatePrefab(playerPrefab);
         player.transform.position = new Vector3(0, 1.2f, -16f);
+        player.transform.rotation = Quaternion.Euler(0f, 14f, 0f);   // start angled toward the sun glow: a less symmetric opening view
         new GameObject("Game").AddComponent<GameBootstrap>();
 
         BuildPillar();
@@ -457,7 +475,7 @@ public static partial class LastStandBuilder
         RenderSettings.ambientEquatorColor = new Color(0.55f, 0.40f, 0.33f);
         RenderSettings.ambientGroundColor = new Color(0.26f, 0.19f, 0.15f);
         RenderSettings.fog = true; RenderSettings.fogMode = FogMode.ExponentialSquared;
-        RenderSettings.fogDensity = 0.0165f; RenderSettings.fogColor = new Color(0.56f, 0.39f, 0.29f);
+        RenderSettings.fogDensity = 0.0185f; RenderSettings.fogColor = new Color(0.64f, 0.46f, 0.36f);
         RenderSettings.reflectionIntensity = 0.5f;
 
         // Post-processing: bloom, filmic tonemapping with a warm grade, vignette, ambient obscurance, grain
@@ -518,7 +536,8 @@ public static partial class LastStandBuilder
     {
         Texture2D tex = panelTex; Vector2 tile; float gloss = 0.2f, metallic = 0f;
         bool metal = name.Contains("Container") || name.StartsWith("Hangar");
-        if (name == "Floor") { tex = floorTex; tile = new Vector2(scale.x / 5f, scale.z / 5f); gloss = 0.05f; }
+        if (name == "PlatformDeck") { tex = grateTex; tile = new Vector2(scale.x / 2f, scale.z / 2f); gloss = 0.35f; metallic = 0.6f; }
+        else if (name == "Floor") { tex = floorTex; tile = new Vector2(scale.x / 5f, scale.z / 5f); gloss = 0.05f; }
         else if (metal) { tex = containerTex; tile = new Vector2(Mathf.Max(1f, Mathf.Max(scale.x, scale.z) / 3f), Mathf.Max(1f, scale.y / 3f)); gloss = 0.3f; metallic = 0.35f; }
         else if (name.StartsWith("Wall") || name.StartsWith("Room") || name.StartsWith("Roof") || name.StartsWith("Parapet") || name.StartsWith("Wreck") || name.StartsWith("Crane"))
         { tex = panelTex; tile = new Vector2(Mathf.Max(1f, Mathf.Max(scale.x, scale.z) / 4f), Mathf.Max(1f, scale.y / 4f)); gloss = 0.15f; metallic = 0.2f; }
@@ -545,8 +564,8 @@ public static partial class LastStandBuilder
     static void BuildLevel(Transform level)
     {
         var rng = new System.Random(11);
-        var concrete = new Color(0.78f, 0.74f, 0.68f);
-        var wall = new Color(0.6f, 0.58f, 0.55f);
+        var concrete = new Color(0.74f, 0.72f, 0.7f);
+        var wall = new Color(0.46f, 0.46f, 0.5f);
 
         Box(level, "Floor", new Vector3(0, -0.5f, 0), new Vector3(135, 1, 135), concrete);
 
@@ -555,12 +574,32 @@ public static partial class LastStandBuilder
         var dirt = new Color(0.95f, 0.78f, 0.62f);
         Prim(PrimitiveType.Cube, land, "Terrain", new Vector3(0, -1.05f, 0), new Vector3(1400, 2f, 1400), Mat(dirt, 0f, dirtTex, new Vector2(300f, 300f), 0.02f), false);
         var hillRng = new System.Random(77);
-        for (int i = 0; i < 26; i++)
+        var ridgeDark = new Color(0.30f, 0.20f, 0.17f); var ridgeFar = new Color(0.66f, 0.47f, 0.37f);
+        for (int i = 0; i < 40; i++)
         {
-            float a = (float)(hillRng.NextDouble() * Mathf.PI * 2f), dist = 110f + (float)hillRng.NextDouble() * 220f;
-            float wide = 50f + (float)hillRng.NextDouble() * 110f, tall = 12f + (float)hillRng.NextDouble() * 38f;
-            Prim(PrimitiveType.Sphere, land, "Hill" + i, new Vector3(Mathf.Cos(a) * dist, tall * 0.15f - 4f, Mathf.Sin(a) * dist), new Vector3(wide, tall, wide * 0.9f),
-                 Mat(dirt * (0.7f + 0.3f * (float)hillRng.NextDouble()), 0f, dirtTex, new Vector2(wide / 8f, tall / 8f), 0.02f), false);
+            float a = (float)(hillRng.NextDouble() * Mathf.PI * 2f), dist = 200f + (float)hillRng.NextDouble() * 330f;
+            float wide = 70f + (float)hillRng.NextDouble() * 150f, tall = 25f + (float)hillRng.NextDouble() * 70f;
+            // unlit so the haze doesn't erase them; farther ridges fade toward the horizon color
+            var col = Color.Lerp(ridgeDark, ridgeFar, Mathf.InverseLerp(200f, 530f, dist));
+            // a rotated slab seen edge-on is a triangular peak; random yaw gives a jagged skyline
+            var peak = Prim(PrimitiveType.Cube, land, "Ridge" + i, new Vector3(Mathf.Cos(a) * dist, tall * 0.1f - 4f, Mathf.Sin(a) * dist), new Vector3(tall * 1.1f, tall * 1.1f, wide),
+                 Mat(col, 0f, null, default(Vector2), 0f, "Sprites/Default"), false);
+            peak.transform.rotation = Quaternion.Euler(0, Mathf.Atan2(-Mathf.Cos(a), Mathf.Sin(a)) * Mathf.Rad2Deg + (float)(hillRng.NextDouble() * 30 - 15), 45f);
+        }
+        // dark rock outcrops (clumps of squashed, rotated stones) just beyond the container wall
+        var rockMat = Mat(new Color(0.42f, 0.36f, 0.32f), 0f, dirtTex, new Vector2(4f, 4f), 0.1f);
+        for (int i = 0; i < 14; i++)
+        {
+            float a = (float)(hillRng.NextDouble() * Mathf.PI * 2f), dist = 78f + (float)hillRng.NextDouble() * 40f;
+            var c = new Vector3(Mathf.Cos(a) * dist, 0f, Mathf.Sin(a) * dist);
+            int n = 4 + hillRng.Next(4);
+            for (int k = 0; k < n; k++)
+            {
+                float s = 6f + (float)hillRng.NextDouble() * 12f;
+                Prim(PrimitiveType.Sphere, land, "Rock" + i + "_" + k, c + new Vector3((float)hillRng.NextDouble() * 18 - 9, s * 0.22f, (float)hillRng.NextDouble() * 18 - 9),
+                     new Vector3(s, s * (0.5f + (float)hillRng.NextDouble() * 0.5f), s * 0.9f), rockMat, false,
+                     new Vector3((float)hillRng.NextDouble() * 20, (float)hillRng.NextDouble() * 360, (float)hillRng.NextDouble() * 20));
+            }
         }
 
         // Perimeter: a triple-stacked wall of shipping containers (the yard has no way out)
@@ -596,13 +635,16 @@ public static partial class LastStandBuilder
         Box(room, "RoomWallEast1", new Vector3(-7f, h / 2, 13.75f), new Vector3(0.6f, h, 2.5f), wall);
         Box(room, "RoomWallEast2", new Vector3(-7f, h / 2, 18f), new Vector3(0.6f, h, 2f), wall);
         var crate = new Color(0.55f, 0.4f, 0.2f);
-        Box(room, "Crate1", new Vector3(-12.3f, 0.75f, 17.4f), Vector3.one * 1.5f, crate);
-        Box(room, "Crate2", new Vector3(-10.8f, 0.75f, 17.4f), Vector3.one * 1.5f, crate);
-        Box(room, "Crate3", new Vector3(-12.3f, 0.75f, 15.9f), Vector3.one * 1.5f, crate);
+        MilCrate(room, "Crate1", new Vector3(-12.3f, 0.75f, 17.4f), 1.5f);
+        MilCrate(room, "Crate2", new Vector3(-10.8f, 0.75f, 17.4f), 1.5f);
+        MilCrate(room, "Crate3", new Vector3(-12.3f, 0.75f, 15.9f), 1.5f);
 
         var lights = Group(level, "Lights");
-        AddLight(lights, new Vector3(-10.5f, 4.5f, 16f), new Color(1f, 0.85f, 0.6f), 12f, 1.2f).name = "RoomLight";
-        AddLight(lights, new Vector3(0, 5f, 8f), new Color(1f, 0.8f, 0.6f), 22f, 1.1f).name = "HallLight";
+        AddLight(lights, new Vector3(-10.5f, 4.5f, 16f), new Color(1f, 0.85f, 0.6f), 14f, 2.0f).name = "RoomLight";
+        AddLight(lights, new Vector3(0, 5f, 8f), new Color(1f, 0.8f, 0.6f), 22f, 1.3f).name = "HallLight";
+        AddLight(lights, new Vector3(-8f, 5f, 4f), new Color(1f, 0.8f, 0.6f), 18f, 1.8f).name = "HallLightW";
+        AddLight(lights, new Vector3(8f, 5f, 4f), new Color(1f, 0.8f, 0.6f), 18f, 1.8f).name = "HallLightE";
+        AddLight(lights, new Vector3(0f, 5f, 16f), new Color(0.9f, 0.85f, 0.75f), 18f, 1.8f).name = "HallLightN";
 
         // Cover scattered across the yard
         var yard = Group(level, "YardCover");
@@ -643,10 +685,14 @@ public static partial class LastStandBuilder
             float a = i * Mathf.PI * 2f / 9f + 0.3f; float r = 28f + (i % 3) * 9f;
             var fire = new GameObject("Fire" + i); fire.transform.SetParent(fires, false);
             fire.transform.position = new Vector3(Mathf.Cos(a) * r, 0f, Mathf.Sin(a) * r);
-            var flame = Mat(new Color(1f, 0.45f, 0.08f), 1.4f);
-            Prim(PrimitiveType.Sphere, fire.transform, "Flame", Vector3.up * 0.35f, new Vector3(0.9f, 0.55f, 0.9f), flame, false);
-            Prim(PrimitiveType.Sphere, fire.transform, "FlameMid", Vector3.up * 0.75f, new Vector3(0.6f, 0.7f, 0.6f), flame, false);
-            Prim(PrimitiveType.Sphere, fire.transform, "FlameTip", Vector3.up * 1.15f, new Vector3(0.3f, 0.55f, 0.3f), Mat(new Color(1f, 0.75f, 0.2f), 1.8f), false);
+            var flame = Mat(new Color(1f, 0.42f, 0.08f), 1.3f); var tip = Mat(new Color(1f, 0.72f, 0.2f), 1.6f);
+            Prim(PrimitiveType.Cylinder, fire.transform, "FirePit", Vector3.up * 0.1f, new Vector3(1.3f, 0.1f, 1.3f), Mat(new Color(0.12f, 0.1f, 0.1f)), false);
+            for (int k = 0; k < 6; k++)
+            {
+                float ang = k * 60f + i * 13f, fh = 0.8f + (k % 3) * 0.35f;
+                var blade = Prim(PrimitiveType.Cube, fire.transform, "Flame", new Vector3(Mathf.Cos(ang * Mathf.Deg2Rad) * 0.28f, 0.1f + fh * 0.5f, Mathf.Sin(ang * Mathf.Deg2Rad) * 0.28f),
+                                 new Vector3(0.18f, fh, 0.18f), k % 2 == 0 ? flame : tip, false, new Vector3(Mathf.Sin(ang) * 12f, ang, Mathf.Cos(ang) * 12f));
+            }
             AddLight(fire.transform, Vector3.up * 2f, new Color(1f, 0.5f, 0.15f), 16f, 1.6f);
             fire.AddComponent<Flicker>();
         }

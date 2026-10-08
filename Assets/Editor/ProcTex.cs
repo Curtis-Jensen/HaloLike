@@ -67,6 +67,11 @@ public static class ProcTex
             float crack = Mathf.Abs(Fbm(u, v, 6, 6, 3, 21) - 0.5f);
             float c = 0.68f + (blotch - 0.5f) * 0.35f + (grain - 0.5f) * 0.1f - stain * 0.22f;
             if (crack < 0.004f) c -= 0.12f;
+            // long dark oil / tire streaks and rust-red patches
+            float streakN = Fbm(u, v, 2, 14, 3, 201);
+            c -= Mathf.SmoothStep(0.62f, 0.8f, streakN) * 0.25f;
+            float rustP = Mathf.SmoothStep(0.7f, 0.85f, Fbm(u, v, 5, 5, 3, 211));
+            if (rustP > 0f) return Color.Lerp(C(c * 1.0f, c * 0.97f, c * 0.92f), C(0.5f, 0.3f, 0.2f) * (c + 0.25f), rustP * 0.4f);
             // warm dust tint
             return C(c * 1.04f, c * 0.98f, c * 0.9f);
         });
@@ -108,6 +113,20 @@ public static class ProcTex
         });
     }
 
+    // Perforated steel grating: bright bars with dark holes
+    public static Texture2D Grate(int size = 256)
+    {
+        return Make(size, size, (u, v) =>
+        {
+            float cu = (u * 16f) % 1f, cv = (v * 16f) % 1f;
+            bool hole = cu > 0.22f && cu < 0.78f && cv > 0.22f && cv < 0.78f;
+            float wear = Fbm(u, v, 4, 4, 3, 221);
+            float c = hole ? 0.04f : 0.5f + (wear - 0.5f) * 0.3f;
+            if (!hole && (cu < 0.1f || cv < 0.1f)) c *= 1.15f;
+            return C(c, c * 0.98f, c * 0.95f);
+        });
+    }
+
     // Packed dirt and gravel for the surrounding terrain
     public static Texture2D Dirt(int size = 256)
     {
@@ -130,22 +149,26 @@ public static class ProcTex
             float lon = (u - 0.5f) * Mathf.PI * 2f, lat = (v - 0.5f) * Mathf.PI;
             var dir = new Vector3(Mathf.Cos(lat) * Mathf.Sin(lon), Mathf.Sin(lat), Mathf.Cos(lat) * Mathf.Cos(lon));
             float e = Mathf.Max(0f, Mathf.Sin(lat));                    // 0 at horizon, 1 at zenith
-            Color horizon = C(0.95f, 0.58f, 0.34f), mid = C(0.50f, 0.36f, 0.30f), top = C(0.17f, 0.13f, 0.13f);
+            Color horizon = C(0.80f, 0.55f, 0.42f), mid = C(0.52f, 0.38f, 0.32f), top = C(0.15f, 0.12f, 0.13f);
             Color col = Color.Lerp(horizon, mid, Mathf.Clamp01(e * 3.2f));
             col = Color.Lerp(col, top, Mathf.Clamp01((e - 0.15f) * 1.3f));
             // billowing smoke layers
-            float c1 = Fbm(u, v * 2f, 8, 4, 5, 101);
-            float c2 = Fbm(u, v * 2f, 16, 8, 4, 131);
-            float smoke = Mathf.SmoothStep(0.38f, 0.72f, c1 * 0.7f + c2 * 0.3f);
+            float c1 = Fbm(u, v * 3f, 12, 6, 5, 101);
+            float c2 = Fbm(u, v * 3f, 24, 12, 4, 131);
+            float cn = 0.5f + (c1 * 0.7f + c2 * 0.3f - 0.5f) * 2.6f;     // fbm hugs 0.5, so stretch contrast to get real cloud masses
+            float smoke = Mathf.SmoothStep(0.3f, 0.72f, cn);
             Color smokeCol = Color.Lerp(C(0.30f, 0.22f, 0.20f), C(0.62f, 0.40f, 0.28f), Mathf.Clamp01(1f - e * 2f));
             col = Color.Lerp(col, smokeCol, smoke * Mathf.Clamp01(0.35f + e) * 0.9f);
+            // a teal-grey break in the smoke
+            float teal = Mathf.SmoothStep(0.55f, 0.7f, 0.5f + (Fbm(u, v * 2f, 5, 3, 3, 171) - 0.5f) * 2.4f) * Mathf.SmoothStep(0.08f, 0.35f, e);
+            col = Color.Lerp(col, C(0.40f, 0.48f, 0.48f), teal * 0.55f);
             // horizon smoke columns from the glassing
             float column = Mathf.SmoothStep(0.55f, 0.8f, Fbm(u, v, 40, 2, 3, 151)) * Mathf.Clamp01(1f - e * 5f);
-            col = Color.Lerp(col, C(0.20f, 0.14f, 0.12f), column * 0.55f);
+            col = Color.Lerp(col, C(0.20f, 0.14f, 0.12f), column * 0.0f);
             // hazy sun and its bloom
             float ang = Mathf.Acos(Mathf.Clamp(Vector3.Dot(dir, sunDir), -1f, 1f));
             float glow = Mathf.Exp(-ang * ang * 9f) * 0.55f + Mathf.Exp(-ang * ang * 120f) * 1.2f;
-            col += C(1f, 0.78f, 0.5f) * glow * (1f - smoke * 0.35f);
+            col += C(1f, 0.66f, 0.46f) * glow * (1f - smoke * 0.35f);
             // below the horizon: dusty ground tone (hidden by terrain anyway)
             if (lat < 0f) col = Color.Lerp(col, C(0.38f, 0.26f, 0.19f), Mathf.Clamp01(-lat * 6f));
             col.r = Mathf.Min(col.r, 1f); col.g = Mathf.Min(col.g, 1f); col.b = Mathf.Min(col.b, 1f); col.a = 1f;
