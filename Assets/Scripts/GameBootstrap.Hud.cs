@@ -3,6 +3,7 @@ using UnityEngine;
 // Reach-style HUD drawn with IMGUI (dependency-free): vitals, motion tracker, objective, ability, weapon, scope and the ending screen.
 public partial class GameBootstrap
 {
+    GUIStyle swapShadow;
     Texture2D scopeTex, visorTex;
     GUIStyle label, big, small, shadowStyle;
 
@@ -225,7 +226,8 @@ public partial class GameBootstrap
             float a = Mathf.Clamp01((t - lines[i].start) / 1.2f) * Mathf.Clamp01((end + 1f - t) / 1f);
             var c = style.normal.textColor; style.normal.textColor = new Color(1f, 1f, 1f, a);
             GUI.color = Color.white;
-            var shadow = new GUIStyle(style); shadow.normal.textColor = new Color(0f, 0f, 0f, a * 0.8f);
+            if (swapShadow == null) swapShadow = new GUIStyle(style);
+            var shadow = swapShadow; shadow.fontSize = style.fontSize; shadow.alignment = style.alignment; shadow.normal.textColor = new Color(0f, 0f, 0f, a * 0.8f);
             GUI.Label(new Rect(2, y + 2, w, 60), lines[i].text, shadow);
             GUI.Label(new Rect(0, y, w, 60), lines[i].text, style);
             style.normal.textColor = c;

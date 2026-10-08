@@ -49,6 +49,7 @@ public partial class GameBootstrap
 
         // Everything else in the yard goes quiet; only the staged Sangheili remain
         foreach (var e in new System.Collections.Generic.List<Enemy>(Enemy.All)) if (e) Destroy(e.gameObject);
+        foreach (var ph in FindObjectsOfType<Phantom>()) Destroy(ph.gameObject);
 
         Vector3 floorPos = p.transform.position;
         Vector3 fwd = Vector3.ProjectOnPlane(p.transform.forward, Vector3.up).normalized;
@@ -64,7 +65,14 @@ public partial class GameBootstrap
         var elite2 = Actor(Enemy.Kind.Elite, floorPos + fwd * 2.8f + right * 2.2f, povPos);
         var elite3 = Actor(Enemy.Kind.Elite, floorPos + fwd * 2.6f - right * 2.3f, povPos);
         var elite4 = Actor(Enemy.Kind.General, floorPos + fwd * 4.8f + right * 0.8f, povPos);
-        actors = new[] { zeal, elite2, elite3, elite4 };
+        // Seven Sangheili in all stand over the fallen Spartan
+        var ring = new Enemy[3];
+        for (int i = 0; i < 3; i++)
+        {
+            float a = Mathf.PI * (0.35f + 0.65f * i / 2f);
+            ring[i] = Actor(i == 1 ? Enemy.Kind.Zealot : Enemy.Kind.Elite, floorPos + fwd * (5.5f * Mathf.Sin(a)) + right * (5.5f * Mathf.Cos(a)), povPos);
+        }
+        actors = new[] { zeal, elite2, elite3, elite4, ring[0], ring[1], ring[2] };
         zealotActor = zeal ? zeal.transform : null;
 
         // The energy dagger: ignites above the fallen Spartan, then stabs down
@@ -190,7 +198,7 @@ public partial class GameBootstrap
             deathCam.rotation = Quaternion.Euler(Mathf.Lerp(6f, -2f, k), Mathf.Lerp(-12f, 10f, k), 0f);
         }
 
-        if (t > 27f && Input.GetKeyDown(KeyCode.Return))
+        if (t > TEpilogue + 23f && Input.GetKeyDown(KeyCode.Return))
             UnityEngine.SceneManagement.SceneManager.LoadScene(UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex);
     }
 

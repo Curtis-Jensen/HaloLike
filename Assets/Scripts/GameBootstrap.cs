@@ -137,7 +137,7 @@ public partial class GameBootstrap : MonoBehaviour
     // A Phantom unloads Sangheili right on top of you
     public static void SpawnDropTrooper(Vector3 pos)
     {
-        if (!inst) return;
+        if (!inst || (Player.Instance && Player.Instance.IsDead)) return;
         float t = Time.time - inst.startTime;
         var kind = t > 240f && Random.value < 0.4f ? Enemy.Kind.Zealot : Random.value < 0.25f ? Enemy.Kind.General : Enemy.Kind.Elite;
         Spawner.Spawn(kind, t > 90f ? Enemy.Rank.Ultra : Enemy.Rank.Major, pos, 1f + Mathf.Min(t / 240f, 2f));
