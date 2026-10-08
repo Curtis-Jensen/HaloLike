@@ -42,6 +42,8 @@ public static class LastStandShots
     public static void CaptureAll()
     {
         EditorSceneManager.OpenScene("Assets/Scenes/LastStand.unity");
+        // the scene's own Player (unposed arms in edit mode) would sit in front of every shot camera
+        var scenePlayer = Object.FindObjectOfType<Player>(); if (scenePlayer) scenePlayer.gameObject.SetActive(false);
         Physics.SyncTransforms();
         foreach (var ps in Object.FindObjectsOfType<ParticleSystem>()) ps.Simulate(10f, true, true);   // so smoke / flames / ash appear in still frames
         string dir = Path.GetFullPath(Path.Combine(Application.dataPath, "../Screenshots"));
@@ -84,6 +86,7 @@ public static class LastStandShots
             var gun = pl.transform.Find("Camera/Gun");
             var model = (GameObject)Object.Instantiate(Resources.Load<GameObject>("Weapons/" + id), gun);
             model.transform.localPosition = Vector3.zero; model.transform.localRotation = Quaternion.identity;
+            ViewArms.Pose(gun, model.transform);
             var camT = pl.transform.Find("Camera");
             Shot(dir, "11_view_" + id, camT.position, camT.position + Vector3.forward * 20f + Vector3.up * 0.3f, 80f);
             Object.DestroyImmediate(pl);

@@ -94,6 +94,7 @@ public class Player : MonoBehaviour
             gunModel.localPosition = Vector3.zero; gunModel.localRotation = Quaternion.identity;
             foreach (var l in gunModel.GetComponentsInChildren<Light>()) l.enabled = false;
             muzzlePoint = gunModel.Find("Muzzle");
+            ViewArms.Pose(gun, gunModel);
         }
         else muzzlePoint = null;
         if (muzzle) { muzzle.transform.SetParent(muzzlePoint ? muzzlePoint : gun, false); muzzle.transform.localPosition = Vector3.zero; }

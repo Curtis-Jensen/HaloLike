@@ -14,7 +14,7 @@ public static partial class LastStandBuilder
 {
     const string ScenePath = "Assets/Scenes/LastStand.unity";
     const string Gen = "Assets/Generated";
-    const int Version = 12;                       // bump to make Unity rebuild the scene automatically
+    const int Version = 21;                       // bump to make Unity rebuild the scene automatically
     const string VersionFile = "Assets/Generated/builder_version.txt";
     static readonly Dictionary<string, Material> matCache = new Dictionary<string, Material>();
     static Texture2D panelTex, floorTex, containerTex, dirtTex, skyTex, grateTex;
@@ -300,6 +300,23 @@ public static partial class LastStandBuilder
                 mz = new Vector3(0, 0.06f, 1.2f); break;
         }
         var m = new GameObject("Muzzle"); m.transform.SetParent(t, false); m.transform.localPosition = mz;
+        // hand positions: GripR on the grip / hilt, GripL on the fore-end (none for the sword: one hand)
+        Vector3 gr, gl; bool two = true;
+        switch (id)
+        {
+            case "ar": gr = new Vector3(0, -0.1f, 0.09f); gl = new Vector3(0, -0.03f, 0.58f); break;
+            case "dmr": gr = new Vector3(0, -0.09f, 0.09f); gl = new Vector3(0, -0.02f, 0.78f); break;
+            case "pistol": gr = new Vector3(0, -0.06f, 0.03f); gl = new Vector3(0.015f, -0.09f, 0.045f); break;
+            case "shotgun": gr = new Vector3(0, -0.09f, 0.06f); gl = new Vector3(0, -0.075f, 0.5f); break;
+            case "sniper": gr = new Vector3(0, -0.07f, 0.07f); gl = new Vector3(0, -0.06f, 0.62f); break;
+            case "sword": gr = new Vector3(0, 0, 0.1f); gl = Vector3.zero; two = false; break;
+            case "concussion": gr = new Vector3(0, -0.13f, 0.16f); gl = new Vector3(0, -0.08f, 0.56f); break;
+            case "turret": gr = new Vector3(0, 0.13f, 0.25f); gl = new Vector3(0, -0.04f, 0.62f); break;
+            case "plasma": gr = new Vector3(0, -0.11f, 0.1f); gl = new Vector3(0, -0.02f, 0.46f); break;
+            default: gr = new Vector3(0, -0.11f, 0.12f); gl = new Vector3(0, -0.05f, 0.56f); break;   // repeater
+        }
+        var gR = new GameObject("GripR"); gR.transform.SetParent(t, false); gR.transform.localPosition = gr;
+        if (two) { var gL = new GameObject("GripL"); gL.transform.SetParent(t, false); gL.transform.localPosition = gl; }
         return root;
     }
 
@@ -407,27 +424,27 @@ public static partial class LastStandBuilder
         var plate = Mat(new Color(0.3f, 0.36f, 0.24f), 0f, null, default(Vector2), 0.5f, "Standard", 0.5f);
         var inner = Mat(new Color(0.1f, 0.1f, 0.11f), 0f, null, default(Vector2), 0.35f, "Standard", 0.3f);
         var sleeveMat = Mat(new Color(0.22f, 0.27f, 0.17f), 0f, null, default(Vector2), 0.4f, "Standard", 0.3f);
-        // right arm: vambrace + angled plates + blocky glove gripping the weapon
-        Limb(gun.transform, PrimitiveType.Capsule, "ForearmR", new Vector3(0.075f, -0.13f, -0.1f), new Vector3(0.02f, -0.07f, -0.01f), 0.036f, sleeveMat);
-        Prim(PrimitiveType.Cube, gun.transform, "VambraceR", new Vector3(0.09f, -0.23f, -0.22f), new Vector3(0.08f, 0.05f, 0.2f), plate, false, new Vector3(-16f, 22f, 8f));
-        Glove(gun.transform, new Vector3(0.0f, -0.055f, 0.03f), inner);
-        // left arm: reaches forward under the barrel
-        Limb(gun.transform, PrimitiveType.Capsule, "ForearmL", new Vector3(-0.14f, -0.18f, 0.12f), new Vector3(-0.03f, -0.075f, 0.34f), 0.034f, sleeveMat);
-        Prim(PrimitiveType.Cube, gun.transform, "VambraceL", new Vector3(-0.2f, -0.23f, 0.08f), new Vector3(0.075f, 0.05f, 0.22f), plate, false, new Vector3(-8f, -22f, -10f));
-        Glove(gun.transform, new Vector3(-0.025f, -0.06f, 0.37f), inner);
+        // arms are built here and posed at runtime onto each weapon's grip points (ViewArms.Pose)
+        foreach (string side in new[] { "R", "L" })
+        {
+            var fa = Prim(PrimitiveType.Capsule, gun.transform, "Forearm" + side, Vector3.zero, new Vector3(0.062f, 0.2f, 0.062f), sleeveMat);
+            var va = Prim(PrimitiveType.Cube, gun.transform, "Vambrace" + side, Vector3.zero, new Vector3(0.085f, 0.05f, 0.2f), plate);
+            Glove(gun.transform, Vector3.zero, inner).name = "Glove" + side;
+        }
 
         Ash(cam.transform);
         return SavePrefab(root, "Assets/Prefabs/Player.prefab");
     }
 
     // Blocky glove: palm, four finger blocks and a thumb
-    static void Glove(Transform parent, Vector3 pos, Material mat)
+    static Transform Glove(Transform parent, Vector3 pos, Material mat)
     {
         var g = new GameObject("Glove").transform; g.SetParent(parent, false); g.localPosition = pos;
         Prim(PrimitiveType.Cube, g, "Palm", Vector3.zero, new Vector3(0.07f, 0.04f, 0.085f), mat);
         for (int i = 0; i < 4; i++)
             Prim(PrimitiveType.Cube, g, "Finger" + i, new Vector3(-0.026f + i * 0.0175f, -0.012f, 0.055f), new Vector3(0.016f, 0.026f, 0.05f), mat, false, new Vector3(25f, 0, 0));
         Prim(PrimitiveType.Cube, g, "Thumb", new Vector3(0.04f, 0.01f, 0.02f), new Vector3(0.02f, 0.022f, 0.06f), mat, false, new Vector3(0, -20f, 0));
+        return g;
     }
 
     // ---------- The scene ----------
