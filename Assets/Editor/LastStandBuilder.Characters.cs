@@ -34,7 +34,7 @@ public static partial class LastStandBuilder
         LeanUpperBody(t, new Vector3(0f, 0.75f, 0f), 16f, new[] { "Leg", "Foot" });
     }
 
-    static Material ArmorT(Color col) { return Mat(col, 0f, null, default(Vector2), 0.55f, "Standard", 0.25f); }   // glossy painted armor; Spawner tints parts named *_A / *_AD per rank
+    static Material ArmorT(Color col) { return Mat(col, 0f, null, default(Vector2), 0.3f, "Standard", 0.15f); }   // glossy painted armor; Spawner tints parts named *_A / *_AD per rank
 
     // Sangheili: tall digitigrade warriors in segmented armor, two-handed plasma rifle (or energy sword)
     static void BuildElite(Transform t, Color bodyColor, bool crest, bool jetpack, bool sword)

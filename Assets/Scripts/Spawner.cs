@@ -4,8 +4,8 @@ using UnityEngine;
 // and applies per-rank stats and colors. Edit the prefabs to change how an enemy looks.
 public static class Spawner
 {
-    static readonly Color gruntMinor = new Color(0.92f, 0.46f, 0.1f), gruntMajor = new Color(0.85f, 0.18f, 0.12f), gruntUltra = new Color(0.95f, 0.8f, 0.25f);
-    static readonly Color eliteMinor = new Color(0.15f, 0.38f, 0.95f), eliteMajor = new Color(0.9f, 0.22f, 0.1f), eliteUltra = new Color(0.88f, 0.9f, 0.95f);
+    static readonly Color gruntMinor = new Color(0.78f, 0.4f, 0.14f), gruntMajor = new Color(0.68f, 0.2f, 0.14f), gruntUltra = new Color(0.8f, 0.68f, 0.3f);
+    static readonly Color eliteMinor = new Color(0.14f, 0.3f, 0.7f), eliteMajor = new Color(0.68f, 0.2f, 0.12f), eliteUltra = new Color(0.72f, 0.74f, 0.78f);
     static readonly Color plasmaBlue = new Color(0.3f, 0.8f, 1f);
 
     // Don't spawn embedded in a wall, crate or container: search outward for open ground

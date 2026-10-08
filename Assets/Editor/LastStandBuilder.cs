@@ -14,7 +14,7 @@ public static partial class LastStandBuilder
 {
     const string ScenePath = "Assets/Scenes/LastStand.unity";
     const string Gen = "Assets/Generated";
-    const int Version = 10;                       // bump to make Unity rebuild the scene automatically
+    const int Version = 12;                       // bump to make Unity rebuild the scene automatically
     const string VersionFile = "Assets/Generated/builder_version.txt";
     static readonly Dictionary<string, Material> matCache = new Dictionary<string, Material>();
     static Texture2D panelTex, floorTex, containerTex, dirtTex, skyTex, grateTex;
@@ -204,13 +204,15 @@ public static partial class LastStandBuilder
                 G(t, cube, "Grip", new Vector3(0, -0.1f, 0.08f), new Vector3(0.04f, 0.12f, 0.05f), black, 0f, new Vector3(15f, 0, 0));
                 G(t, cube, "Stock", new Vector3(0, -0.01f, -0.12f), new Vector3(0.06f, 0.1f, 0.22f), olive);
                 G(t, cube, "TopRail", new Vector3(0, 0.07f, 0.3f), new Vector3(0.03f, 0.02f, 0.5f), metal);
+                G(t, cube, "Stripe", new Vector3(0, 0.0f, 0.25f), new Vector3(0.082f, 0.025f, 0.34f), new Color(0.95f, 0.5f, 0.1f));
+                G(t, cube, "MagCurve", new Vector3(0, -0.2f, 0.36f), new Vector3(0.05f, 0.1f, 0.075f), metal, 0f, new Vector3(-26f, 0, 0));
                 G(t, cube, "FrontSight", new Vector3(0, 0.07f, 0.74f), new Vector3(0.015f, 0.05f, 0.015f), black);
                 G(t, cube, "TriggerGuard", new Vector3(0, -0.06f, 0.17f), new Vector3(0.015f, 0.035f, 0.1f), black);
                 G(t, cube, "AmmoCounter", new Vector3(0.041f, 0.02f, 0.14f), new Vector3(0.005f, 0.03f, 0.07f), cyan, 2f);
                 G(t, cyl, "MuzzleBrake", new Vector3(0, 0.01f, 0.97f), new Vector3(0.032f, 0.03f, 0.032f), metal, 0f, along);
                 mz = new Vector3(0, 0.01f, 1.0f); break;
             case "dmr":
-                G(t, cube, "Body", new Vector3(0, 0, 0.3f), new Vector3(0.06f, 0.1f, 0.62f), gunmetal);
+                G(t, cube, "Body", new Vector3(0, 0, 0.3f), new Vector3(0.06f, 0.1f, 0.62f), new Color(0.3f, 0.36f, 0.2f));
                 G(t, cube, "Handguard", new Vector3(0, 0, 0.75f), new Vector3(0.05f, 0.08f, 0.3f), metal);
                 G(t, cyl, "Barrel", new Vector3(0, 0.01f, 1.1f), new Vector3(0.02f, 0.18f, 0.02f), black, 0f, along);
                 G(t, cyl, "Scope", new Vector3(0, 0.095f, 0.35f), new Vector3(0.04f, 0.13f, 0.04f), black, 0f, along);
@@ -218,7 +220,7 @@ public static partial class LastStandBuilder
                 G(t, cube, "Mount", new Vector3(0, 0.06f, 0.35f), new Vector3(0.02f, 0.04f, 0.1f), metal);
                 G(t, cube, "Mag", new Vector3(0, -0.1f, 0.28f), new Vector3(0.045f, 0.13f, 0.07f), metal);
                 G(t, cube, "Grip", new Vector3(0, -0.09f, 0.08f), new Vector3(0.04f, 0.12f, 0.05f), black, 0f, new Vector3(15f, 0, 0));
-                G(t, cube, "Stock", new Vector3(0, -0.03f, -0.14f), new Vector3(0.05f, 0.12f, 0.3f), olive);
+                G(t, cube, "Stock", new Vector3(0, -0.03f, -0.14f), new Vector3(0.05f, 0.12f, 0.3f), new Color(0.55f, 0.45f, 0.3f));
                 mz = new Vector3(0, 0.01f, 1.3f); break;
             case "pistol":
                 G(t, cube, "Slide", new Vector3(0, 0.03f, 0.13f), new Vector3(0.045f, 0.065f, 0.3f), steel);
@@ -239,6 +241,8 @@ public static partial class LastStandBuilder
             case "sniper":
                 var bluegray = new Color(0.22f, 0.27f, 0.32f);
                 G(t, cube, "Body", new Vector3(0, 0, 0.3f), new Vector3(0.065f, 0.09f, 0.8f), bluegray);
+                G(t, cube, "Stripe", new Vector3(0, 0.0f, 0.45f), new Vector3(0.068f, 0.03f, 0.4f), new Color(0.9f, 0.92f, 0.95f));
+                G(t, cyl, "Bipod", new Vector3(0, -0.09f, 0.95f), new Vector3(0.012f, 0.1f, 0.012f), metal, 0f, new Vector3(0, 0, 18f));
                 G(t, cyl, "Barrel", new Vector3(0, 0.01f, 1.0f), new Vector3(0.025f, 0.3f, 0.025f), black, 0f, along);
                 G(t, cube, "Brake", new Vector3(0, 0.01f, 1.31f), new Vector3(0.05f, 0.05f, 0.07f), metal);
                 G(t, cyl, "Scope", new Vector3(0, 0.1f, 0.35f), new Vector3(0.05f, 0.2f, 0.05f), black, 0f, along);
@@ -404,11 +408,11 @@ public static partial class LastStandBuilder
         var inner = Mat(new Color(0.1f, 0.1f, 0.11f), 0f, null, default(Vector2), 0.35f, "Standard", 0.3f);
         var sleeveMat = Mat(new Color(0.22f, 0.27f, 0.17f), 0f, null, default(Vector2), 0.4f, "Standard", 0.3f);
         // right arm: vambrace + angled plates + blocky glove gripping the weapon
-        Limb(gun.transform, PrimitiveType.Capsule, "ForearmR", new Vector3(0.17f, -0.36f, -0.42f), new Vector3(0.025f, -0.075f, -0.02f), 0.05f, sleeveMat);
+        Limb(gun.transform, PrimitiveType.Capsule, "ForearmR", new Vector3(0.075f, -0.13f, -0.1f), new Vector3(0.02f, -0.07f, -0.01f), 0.036f, sleeveMat);
         Prim(PrimitiveType.Cube, gun.transform, "VambraceR", new Vector3(0.09f, -0.23f, -0.22f), new Vector3(0.08f, 0.05f, 0.2f), plate, false, new Vector3(-16f, 22f, 8f));
         Glove(gun.transform, new Vector3(0.0f, -0.055f, 0.03f), inner);
         // left arm: reaches forward under the barrel
-        Limb(gun.transform, PrimitiveType.Capsule, "ForearmL", new Vector3(-0.36f, -0.37f, -0.12f), new Vector3(-0.03f, -0.075f, 0.34f), 0.047f, sleeveMat);
+        Limb(gun.transform, PrimitiveType.Capsule, "ForearmL", new Vector3(-0.14f, -0.18f, 0.12f), new Vector3(-0.03f, -0.075f, 0.34f), 0.034f, sleeveMat);
         Prim(PrimitiveType.Cube, gun.transform, "VambraceL", new Vector3(-0.2f, -0.23f, 0.08f), new Vector3(0.075f, 0.05f, 0.22f), plate, false, new Vector3(-8f, -22f, -10f));
         Glove(gun.transform, new Vector3(-0.025f, -0.06f, 0.37f), inner);
 

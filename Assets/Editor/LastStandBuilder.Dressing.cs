@@ -66,6 +66,8 @@ public static partial class LastStandBuilder
             Smoke(plumes, new Vector3(Mathf.Cos(a) * dist, 0f, Mathf.Sin(a) * dist), 28f, 60f);
         }
 
+        GroundBreakup(dress, rng);
+
         // Covenant ships holding station in the smoke, raking the ground with thin plasma lines
         var sky = Group(dress, "Sky");
         var hullMat = Mat(new Color(0.22f, 0.16f, 0.36f), 0f, null, default(Vector2), 0f, "Sprites/Default");
@@ -85,6 +87,59 @@ public static partial class LastStandBuilder
             // two thin angled plasma lines from the belly to the ground
             for (int k = 0; k < 2; k++)
                 Prim(PrimitiveType.Cube, ship, "PlasmaLine", new Vector3(k * 4f - 2f, -sp.y * 0.5f, 0), new Vector3(0.2f, sp.y * 1.05f, 0.2f), lineMat, false, new Vector3(k * 8f - 4f, 0, 7f + k * 6f));
+        }
+    }
+
+    // Stains, tire tracks, rubble, cables and jersey barriers: breaks up the flat ground
+    static void GroundBreakup(Transform dress, System.Random rng)
+    {
+        var g = Group(dress, "GroundBreakup");
+        var stain = Mat(new Color(0.02f, 0.015f, 0.01f, 0.32f), 0f, null, default(Vector2), 0f, "Sprites/Default");
+        var rubble = Mat(new Color(0.4f, 0.36f, 0.33f), 0f, floorTex, new Vector2(1f, 1f), 0.1f);
+        var cable = Mat(new Color(0.04f, 0.04f, 0.045f), 0f, null, default(Vector2), 0.4f);
+        var concreteMat = Mat(new Color(0.62f, 0.6f, 0.58f), 0f, floorTex, new Vector2(1f, 1f), 0.08f);
+        for (int i = 0; i < 48; i++)    // oil / scorch stains
+        {
+            float x = (float)(rng.NextDouble() * 110 - 55), z = (float)(rng.NextDouble() * 110 - 55), s = 2.5f + (float)rng.NextDouble() * 6f;
+            Prim(PrimitiveType.Cylinder, g, "Stain", new Vector3(x, 0.025f, z), new Vector3(s, 0.005f, s * (0.5f + (float)rng.NextDouble() * 0.6f)), stain, false, new Vector3(0, (float)rng.NextDouble() * 180f, 0));
+        }
+        for (int i = 0; i < 10; i++)    // paired tire tracks
+        {
+            float x = (float)(rng.NextDouble() * 90 - 45), z = (float)(rng.NextDouble() * 90 - 45), yaw = (float)rng.NextDouble() * 180f;
+            foreach (float off in new[] { -0.9f, 0.9f })
+                Prim(PrimitiveType.Cube, g, "TireTrack", new Vector3(x, 0.026f, z) + Quaternion.Euler(0, yaw, 0) * new Vector3(off, 0, 0), new Vector3(0.45f, 0.005f, 14f + (float)rng.NextDouble() * 10f), stain, false, new Vector3(0, yaw, 0));
+        }
+        for (int i = 0; i < 40; i++)    // rubble piles
+        {
+            var c = new Vector3((float)(rng.NextDouble() * 100 - 50), 0, (float)(rng.NextDouble() * 100 - 50));
+            if (Mathf.Abs(c.x) < 16f && c.z > -6f && c.z < 26f) continue;
+            int n = 3 + rng.Next(4);
+            for (int k = 0; k < n; k++)
+            {
+                float s = 0.2f + (float)rng.NextDouble() * 0.5f;
+                Prim(PrimitiveType.Cube, g, "Rubble", c + new Vector3((float)rng.NextDouble() * 2 - 1, s * 0.3f, (float)rng.NextDouble() * 2 - 1), new Vector3(s, s * 0.6f, s * 0.8f), rubble, false, new Vector3((float)rng.NextDouble() * 40, (float)rng.NextDouble() * 360, (float)rng.NextDouble() * 40));
+            }
+        }
+        for (int i = 0; i < 14; i++)    // cables snaking across the yard
+        {
+            var p0 = new Vector3((float)(rng.NextDouble() * 90 - 45), 0.06f, (float)(rng.NextDouble() * 90 - 45));
+            Vector3 dir = Quaternion.Euler(0, (float)rng.NextDouble() * 360f, 0) * Vector3.forward;
+            for (int k = 0; k < 4; k++)
+            {
+                var p1 = p0 + Quaternion.Euler(0, (float)(rng.NextDouble() * 60 - 30), 0) * dir * (3f + (float)rng.NextDouble() * 3f);
+                Limb(g, PrimitiveType.Cylinder, "Cable", p0, p1, 0.1f, cable);
+                dir = (p1 - p0).normalized; p0 = p1;
+            }
+        }
+        for (int i = 0; i < 14; i++)    // jersey barriers
+        {
+            float x = (float)(rng.NextDouble() * 80 - 40), z = (float)(rng.NextDouble() * 80 - 40);
+            if (Mathf.Abs(x) < 20f && z > -28f && z < 28f) continue;
+            float yaw = (float)rng.NextDouble() * 180f;
+            var bar = Group(g, "JerseyBarrier"); bar.position = new Vector3(x, 0, z); bar.rotation = Quaternion.Euler(0, yaw, 0);
+            var l = Prim(PrimitiveType.Cube, bar, "Base", new Vector3(0, 0.25f, 0), new Vector3(0.9f, 0.5f, 3f), concreteMat, true);
+            Prim(PrimitiveType.Cube, bar, "Top", new Vector3(0, 0.75f, 0), new Vector3(0.45f, 0.55f, 3f), concreteMat, true);
+            GameObjectUtility.SetStaticEditorFlags(l, StaticEditorFlags.BatchingStatic);
         }
     }
 
