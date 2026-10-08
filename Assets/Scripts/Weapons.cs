@@ -53,6 +53,17 @@ public static class Weapons
         id = "concussion", name = "T50 CONCUSSION RIFLE", sfx = "concussion", mag = 6, reserve = 18, interval = 0.8f, damage = 70f, reload = 2.2f,
         projectile = true, projectileSpeed = 48f, kick = 0.15f, tint = new Color(0.4f, 0.3f, 0.8f)
     };
+    // Covenant plasma weapons: scavenged from fallen Sangheili
+    public static readonly WeaponDef PlasmaRifle = new WeaponDef
+    {
+        id = "plasma", name = "TYPE-25 PLASMA RIFLE", sfx = "bolt", mag = 100, reserve = 100, interval = 1f / 9f, damage = 11f, spread = 0.015f,
+        reload = 2.2f, auto = true, tracer = new Color(0.3f, 0.8f, 1f), tint = new Color(0.3f, 0.5f, 0.9f)
+    };
+    public static readonly WeaponDef PlasmaRepeater = new WeaponDef
+    {
+        id = "repeater", name = "TYPE-25 PLASMA REPEATER", sfx = "bolt", mag = 120, reserve = 120, interval = 1f / 15f, damage = 6.5f, spread = 0.03f,
+        reload = 2.4f, auto = true, tracer = new Color(0.4f, 1f, 0.5f), tint = new Color(0.3f, 0.8f, 0.4f)
+    };
     // The yard's detachable machine-gun turrets: carried, heavy, brutal
     public static readonly WeaponDef Turret = new WeaponDef
     {
@@ -60,7 +71,7 @@ public static class Weapons
         auto = true, moveMul = 0.65f, kick = 0.03f, tint = new Color(0.35f, 0.35f, 0.38f)
     };
 
-    public static readonly WeaponDef[] All = { Dmr, Pistol, AssaultRifle, Shotgun, Sniper, Sword, Concussion, Turret };
+    public static readonly WeaponDef[] All = { Dmr, Pistol, AssaultRifle, Shotgun, Sniper, Sword, Concussion, Turret, PlasmaRifle, PlasmaRepeater };
 
     public static WeaponDef ById(string id)
     {

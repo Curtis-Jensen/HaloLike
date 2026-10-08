@@ -19,6 +19,11 @@ public class Pickup : MonoBehaviour
     void Awake()
     {
         if (weapon == null && !string.IsNullOrEmpty(weaponId)) weapon = Weapons.ById(weaponId);
+        if (kind == Kind.Weapon && weapon == null)
+        {
+            Debug.LogError("Weapon pickup '" + name + "' has an unknown weaponId '" + weaponId + "'", this);
+            Destroy(gameObject); return;
+        }
         if (weapon != null)
         {
             if (ammo < 0) ammo = weapon.mag;

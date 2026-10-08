@@ -41,7 +41,7 @@ public partial class GameBootstrap : MonoBehaviour
             Debug.LogError("No SpawnPoints in the scene - run Tools > Last Stand > Build Scene");
             for (int i = 0; i < 12; i++) { float a = i * Mathf.PI / 6f; spawnPoints.Add(new Vector3(Mathf.Cos(a) * 50f, 0.5f, Mathf.Sin(a) * 50f)); }
         }
-        var floor = GameObject.Find("Floor");
+        var floor = GameObject.Find("Level/Floor");
         if (floor) floorMat = floor.GetComponent<Renderer>().material;
     }
 
@@ -174,6 +174,11 @@ public partial class GameBootstrap : MonoBehaviour
         // Scavenge: fallen Covenant leave behind weapons and health
         if (e.kind == Enemy.Kind.Zealot && Random.value < 0.5f) SpawnWeaponPickup(Weapons.Sword, 0, 0, pos);
         else if (e.kind == Enemy.Kind.General && Random.value < 0.5f) SpawnWeaponPickup(Weapons.Concussion, 4, 8, pos);
+        else if ((e.kind == Enemy.Kind.Elite || e.kind == Enemy.Kind.Ranger) && Random.value < 0.5f)
+        {
+            var pw = Random.value < 0.5f ? Weapons.PlasmaRifle : Weapons.PlasmaRepeater;   // Sangheili carry plasma weapons
+            SpawnWeaponPickup(pw, pw.mag / 2, pw.reserve / 3, pos);
+        }
         else if (Random.value < 0.35f) SpawnPickup(pos, Pickup.Kind.Health);
         else { var d = Weapons.Scavenge[Random.Range(0, Weapons.Scavenge.Length)]; SpawnWeaponPickup(d, d.mag / 2, d.reserve / 3, pos); }
     }
@@ -186,6 +191,7 @@ public partial class GameBootstrap : MonoBehaviour
     {
         endStart = Time.time;
         Cursor.visible = false;
+        Sfx.Play3D("sword", p.transform.position + p.transform.forward * 1.5f, 1f);   // the Zealot's energy blade
         Sfx.Play2D("death");
         Vector3 floorPos = p.transform.position;
 

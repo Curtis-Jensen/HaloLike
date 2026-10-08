@@ -13,7 +13,7 @@ public static class LastStandBuilder
 {
     const string ScenePath = "Assets/Scenes/LastStand.unity";
     const string Gen = "Assets/Generated";
-    const int Version = 2;                       // bump to make Unity rebuild the scene automatically
+    const int Version = 3;                       // bump to make Unity rebuild the scene automatically
     const string VersionFile = "Assets/Generated/builder_version.txt";
     static readonly Dictionary<string, Material> matCache = new Dictionary<string, Material>();
     static Texture2D panelTex, floorTex;
@@ -41,7 +41,7 @@ public static class LastStandBuilder
         if (!File.Exists("Assets/Resources/Enemies/Grunt.prefab") || !File.Exists("Assets/Resources/Weapons/ar.prefab")) return true;
         if (!File.Exists(ScenePath)) return true;
         if (!File.Exists(VersionFile) || File.ReadAllText(VersionFile).Trim() != Version.ToString()) return true;
-        return !File.ReadAllText(ScenePath).Contains("m_Name: Level\n");
+        return !File.ReadAllText(ScenePath).Contains("m_Name: Level");
     }
 
     [MenuItem("Tools/Last Stand/Build Scene")]
@@ -232,6 +232,24 @@ public static class LastStandBuilder
                 G(t, cube, "Grip", new Vector3(0, -0.13f, 0.15f), new Vector3(0.05f, 0.14f, 0.06f), black, 0f, new Vector3(12f, 0, 0));
                 G(t, cube, "Rear", new Vector3(0, -0.02f, -0.06f), new Vector3(0.1f, 0.12f, 0.15f), purple);
                 mz = new Vector3(0, 0, 0.9f); break;
+            case "plasma":
+                var plasmaBody = new Color(0.25f, 0.35f, 0.6f);
+                G(t, cube, "Body", new Vector3(0, 0, 0.25f), new Vector3(0.1f, 0.13f, 0.45f), plasmaBody);
+                G(t, cube, "ProngL", new Vector3(-0.07f, 0.02f, 0.6f), new Vector3(0.025f, 0.05f, 0.3f), plasmaBody * 1.3f, 0f, new Vector3(0, 6f, 0));
+                G(t, cube, "ProngR", new Vector3(0.07f, 0.02f, 0.6f), new Vector3(0.025f, 0.05f, 0.3f), plasmaBody * 1.3f, 0f, new Vector3(0, -6f, 0));
+                G(t, cube, "Core", new Vector3(0, 0.02f, 0.55f), new Vector3(0.05f, 0.04f, 0.25f), cyan, 3f);
+                G(t, cube, "Vent", new Vector3(0, 0.075f, 0.2f), new Vector3(0.06f, 0.02f, 0.2f), cyan, 2.5f);
+                G(t, cube, "Grip", new Vector3(0, -0.11f, 0.1f), new Vector3(0.045f, 0.13f, 0.06f), plasmaBody * 0.7f, 0f, new Vector3(15f, 0, 0));
+                mz = new Vector3(0, 0.02f, 0.78f); break;
+            case "repeater":
+                var green = new Color(0.2f, 0.5f, 0.3f);
+                G(t, cube, "Body", new Vector3(0, 0, 0.3f), new Vector3(0.12f, 0.15f, 0.6f), green);
+                G(t, cyl, "Chamber1", new Vector3(0, 0.1f, 0.15f), new Vector3(0.07f, 0.07f, 0.07f), new Color(0.4f, 1f, 0.5f), 3f, along);
+                G(t, cyl, "Chamber2", new Vector3(0, 0.1f, 0.35f), new Vector3(0.07f, 0.07f, 0.07f), new Color(0.4f, 1f, 0.5f), 3f, along);
+                G(t, cyl, "Barrel", new Vector3(0, 0, 0.75f), new Vector3(0.035f, 0.14f, 0.035f), black, 0f, along);
+                G(t, cube, "Fin", new Vector3(0, -0.1f, 0.5f), new Vector3(0.02f, 0.1f, 0.3f), green * 0.7f);
+                G(t, cube, "Grip", new Vector3(0, -0.12f, 0.12f), new Vector3(0.045f, 0.14f, 0.06f), green * 0.6f, 0f, new Vector3(15f, 0, 0));
+                mz = new Vector3(0, 0, 0.92f); break;
             default: // turret
                 G(t, cube, "Body", new Vector3(0, 0.05f, 0.25f), new Vector3(0.18f, 0.2f, 0.55f), metal);
                 G(t, cyl, "Shroud", new Vector3(0, 0.06f, 0.65f), new Vector3(0.07f, 0.2f, 0.07f), steel, 0f, along);
@@ -288,7 +306,7 @@ public static class LastStandBuilder
         BuildEnemy(Enemy.Kind.Ranger, 0.5f, 2.4f, 1f, t => BuildElite(t, new Color(0.2f, 0.55f, 0.3f), false, true, false));
         BuildEnemy(Enemy.Kind.General, 0.5f, 2.4f, 1.1f, t => BuildElite(t, new Color(0.7f, 0.55f, 0.15f), true, false, false));
         BuildEnemy(Enemy.Kind.Zealot, 0.5f, 2.4f, 1.1f, t => BuildElite(t, new Color(0.9f, 0.9f, 0.8f), true, false, true));
-        BuildEnemy(Enemy.Kind.Wraith, 2.3f, 3f, 1f, BuildWraith);
+        BuildEnemy(Enemy.Kind.Wraith, 1.8f, 3.6f, 1f, BuildWraith);
         BuildEnemy(Enemy.Kind.Banshee, 0f, 0f, 1f, BuildBanshee);
     }
 

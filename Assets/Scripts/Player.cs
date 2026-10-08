@@ -233,11 +233,18 @@ public class Player : MonoBehaviour
         if (d.projectile)
         {
             gunKick = d.kick;
-            GameBootstrap.SpawnPlayerConcussion(muzzlePoint ? muzzlePoint.position : cam.transform.position + cam.transform.forward * 0.9f, cam.transform.forward * d.projectileSpeed, d.damage);
+            GameBootstrap.SpawnPlayerConcussion(ProjectileOrigin(), cam.transform.forward * d.projectileSpeed, d.damage);
             return;
         }
         float spread = d.spread * (IsZoomed ? 0.3f : 1f);
         for (int i = 0; i < d.pellets; i++) Shoot(spread, d.damage, d.tracer, d.range);
+    }
+
+    // Spawn shells at the muzzle, unless that point is behind a wall/enemy right in front of us (then start at the camera)
+    Vector3 ProjectileOrigin()
+    {
+        Vector3 m = muzzlePoint ? muzzlePoint.position : cam.transform.position + cam.transform.forward * 0.9f;
+        return Physics.Linecast(cam.transform.position, m, ~0, QueryTriggerInteraction.Ignore) ? cam.transform.position + cam.transform.forward * 0.1f : m;
     }
 
     void Shoot(float spread, float dmg, Color tracer, float range)
@@ -303,6 +310,8 @@ public class Player : MonoBehaviour
         foreach (var p in Pickup.All)
         {
             if (p.kind == Pickup.Kind.Health) continue;
+            // In the last stand Noble Six only has the assault rifle and Magnum: nothing else can be picked up
+            if (GameBootstrap.FinalStand && p.kind == Pickup.Kind.Weapon && p.weapon != Weapons.AssaultRifle && p.weapon != Weapons.Pistol) continue;
             float d = (p.transform.position - transform.position).sqrMagnitude;
             if (d < bestD) { bestD = d; best = p; }
         }

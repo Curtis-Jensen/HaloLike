@@ -1,0 +1,8 @@
+# Unity YAML and sources: keep LF so scene/prefab diffs and the builder's text checks are stable across platforms
+*.unity text eol=lf
+*.prefab text eol=lf
+*.mat text eol=lf
+*.asset text eol=lf
+*.meta text eol=lf
+*.cs text eol=lf
+*.png binary

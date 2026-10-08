@@ -8,11 +8,25 @@ public static class Spawner
     static readonly Color eliteMinor = new Color(0.2f, 0.35f, 0.8f), eliteMajor = new Color(0.75f, 0.2f, 0.2f), eliteUltra = new Color(0.85f, 0.85f, 0.9f);
     static readonly Color plasmaBlue = new Color(0.3f, 0.8f, 1f);
 
+    // Don't spawn embedded in a wall, crate or container: search outward for open ground
+    public static Vector3 FreeSpot(Vector3 pos, float radius)
+    {
+        for (int ring = 0; ring < 5; ring++)
+            for (int i = 0; i < (ring == 0 ? 1 : 8); i++)
+            {
+                float a = i * Mathf.PI / 4f;
+                Vector3 c = pos + new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * ring * 2.5f;
+                if (!Physics.CheckCapsule(c + Vector3.up * (radius + 0.2f), c + Vector3.up * (radius + 1.4f), radius, ~0, QueryTriggerInteraction.Ignore)) return c;
+            }
+        return pos;
+    }
+
     // `hpScale` ramps up with survival time: "enemies become significantly tougher the longer the mission runs"
     public static Enemy Spawn(Enemy.Kind kind, Enemy.Rank rank, Vector3 pos, float hpScale)
     {
         var prefab = Resources.Load<GameObject>("Enemies/" + kind);
         if (!prefab) { Debug.LogError("Missing enemy prefab Resources/Enemies/" + kind + " - run Tools > Last Stand > Build Scene"); return null; }
+        if (kind != Enemy.Kind.Banshee) pos = FreeSpot(pos, kind == Enemy.Kind.Wraith ? 2.2f : 0.5f);
         var root = Object.Instantiate(prefab, pos + Vector3.up * 0.3f, Quaternion.identity);
         root.name = kind + "_" + rank;
         var e = root.GetComponent<Enemy>();
